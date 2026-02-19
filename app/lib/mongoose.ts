@@ -9,8 +9,6 @@ const globalForDb = globalThis as unknown as {
 
 export async function connectToDatabase() {
   if (globalForDb.dbConnected) return;
-
   await db.connect();   
   globalForDb.dbConnected = true;
-
 }
