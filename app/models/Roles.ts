@@ -1,4 +1,4 @@
-import { Schema, model, models, connection } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
 
 interface IRoles {
     name: string;
@@ -16,4 +16,4 @@ const RolesSchema = new Schema<IRoles>({
     updatedAt: { type: Date, default: Date.now },
 });
 
-export const Roles = models['Roles'] as any || model<IRoles>('Roles', RolesSchema, 'Roles');
+export const Roles = models['Roles'] || model<IRoles>('Roles', RolesSchema, 'Roles');

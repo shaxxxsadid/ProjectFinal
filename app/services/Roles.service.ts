@@ -7,7 +7,7 @@ class RolesService {
             const data = await Roles.find();
             return data;
         } catch (error) {
-            logger.error("Failed to fetch roles", error);
+            logger.error(`Failed to fetch roles: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
@@ -17,7 +17,7 @@ class RolesService {
             const role = await Roles.findOne({ name });
             return role;
         } catch (error) {
-            logger.error("Failed to fetch role by name", error);
+            logger.error(`Failed to fetch role by name: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
@@ -27,7 +27,7 @@ class RolesService {
             const newRole = await Roles.create(roleData);
             return newRole;
         } catch (error) {
-            logger.error("Failed to create role", error instanceof Error ? error.message : error);
+            logger.error(`Failed to create role: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
@@ -37,7 +37,7 @@ class RolesService {
             const updatedRole = await Roles.findByIdAndUpdate(_id, { ...updateData, updatedAt: new Date() }, { new: true });
             return updatedRole;
         } catch (error) {
-            logger.error("Failed to update role", error instanceof Error ? error.message : error);
+            logger.error(`Failed to update role: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
@@ -47,7 +47,7 @@ class RolesService {
             const deletedRole = await Roles.findByIdAndDelete(_id);
             return deletedRole;
         } catch (error) {
-            logger.error("Failed to delete role", error instanceof Error ? error.message : error);
+            logger.error(`Failed to delete role: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }

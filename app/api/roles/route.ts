@@ -2,7 +2,7 @@ import { connectToDatabase } from "@/app/lib/mongoose";
 import { rolesService } from "@/app/services/Roles.service";
 import { logger } from "@/app/lib/logger";
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         await connectToDatabase();
         const roles = await rolesService.getAllRoles();
