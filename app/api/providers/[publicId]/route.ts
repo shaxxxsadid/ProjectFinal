@@ -9,6 +9,9 @@ export async function GET(
     try {
         await connectToDatabase();
         const providers = await providersService.getProviderByPublicId((await params).publicId);
+        if (!providers) {
+            return new Response(JSON.stringify({ error: 'Provider not found' }), { status: 404 });
+        }
         return new Response(JSON.stringify(providers), { status: 200 });
     } catch (error) { 
         logger.error(`Failed to fetch provider by publicId: ${error instanceof Error ? error.message : error}`);
