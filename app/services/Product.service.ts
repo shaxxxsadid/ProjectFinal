@@ -39,7 +39,12 @@ class ProductService {
         height?: number; 
         weight?: number; 
         loadCapacity?: number; 
-        isHeatTreated?: boolean; 
+        isHeatTreated?: boolean;
+        avatar?: {
+            fileName: string;
+            type: string;
+            data: Buffer;
+        };
         isIPPC_Certified?: boolean }) {
         try {
             const newProduct = await Products.create(productData);

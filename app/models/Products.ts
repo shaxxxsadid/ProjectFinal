@@ -12,6 +12,11 @@ import { Schema, model, models } from 'mongoose';
     - loadCapacity: number
     - isHeatTreated: boolean
     - isIPPC_Certified: boolean
+    -avatar: {
+        fileName: string,
+        type: string,
+        data: Buffer,
+    }
     - createdAt: Date (automatically set)
     - updatedAt: Date (automatically set)
 */
@@ -27,6 +32,11 @@ const productSchema = new Schema({
     loadCapacity: { type: Number },
     isHeatTreated: { type: Boolean },    
     isIPPC_Certified: { type: Boolean },
+    avatar: {
+        fileName: { type: String },
+        type: { type: String },
+        data: { type: Buffer },
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });
