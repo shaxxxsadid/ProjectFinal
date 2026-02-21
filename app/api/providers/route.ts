@@ -13,6 +13,18 @@ export async function GET() {
     }
 }
 
+export async function POST(request: Request) {
+    const body = await request.json();
+    try {
+        await connectToDatabase();
+        const newProvider = await providersService.createProvider(body);
+        return new Response(JSON.stringify(newProvider), { status: 201 });
+    } catch (error) {
+        logger.error(`Failed to connect to database: ${error instanceof Error ? error.message : error}`);
+        return new Response(JSON.stringify({ error: 'Failed to connect to database' }), { status: 500 });
+    }
+}
+
 export async function PUT (request: Request) {
     const { _id, name, displayName, isActive } = await request.json();
     try {

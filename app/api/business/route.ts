@@ -20,6 +20,18 @@ export async function GET() {
     }
 }
 
+export async function POST(request: Request) {
+    const body = await request.json();
+    try {
+        await connectToDatabase();
+        const newBusiness = await businessProfileService.createBusinessProfile(body);
+        return Response.json({ success: true, data: newBusiness });
+    } catch (error) {
+        logger.error(`Failed to connect to database: ${error instanceof Error ? error.message : error}`);
+        return Response.json({ success: false, error: 'Failed to connect to database' }, { status: 500 });
+    }
+}
+
 /*
     Update an existing business profile
     Expected body: {

@@ -14,6 +14,18 @@ export async function GET(){
     }
 }
 
+export async function POST(request: Request) {
+    const body = await request.json();
+    try {
+        await connectToDatabase();
+        const newUser = await usersService.createUser(body);
+        return Response.json({ success: true, data: newUser });
+    } catch (error) {
+        logger.error(`Failed to connect to database: ${error instanceof Error ? error.message : error}`);
+        return Response.json({ success: false, error: 'Failed to connect to database' }, { status: 500 });
+    }
+}
+
 export async function PUT(request: Request) {
     const body = await request.json();
     try {

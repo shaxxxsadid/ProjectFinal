@@ -21,6 +21,25 @@ export async function GET() {
     }
 }
 
+export async function POST(request: Request) {
+    const body = await request.json();
+    try {
+        logger.info(`API: Received POST request to create account with data - ${JSON.stringify(body)}`);
+        await connectToDatabase();
+        const newAccount = await accountsService.createAccount(body);
+        return Response.json({ success: true, data: newAccount });
+    } catch (error) {
+        logger.error({
+            msg: 'API: Failed to create account',
+            error: error instanceof Error ? error.message : error,
+        });
+        return Response.json(
+            { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
+    }
+}
+
 export async function PUT(request: Request) {
     const body = await request.json();
     try {
