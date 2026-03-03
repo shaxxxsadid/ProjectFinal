@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Header from "@/app/components/ui/header";
+import { ThemeProvider } from "./components/ui/theme-provider";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -9,6 +12,16 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const robotoMono = Geist_Mono({
+  variable: "--font-roboto-mono",
+  subsets: ["latin"],
+});
+
+const inter = Geist({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -23,11 +36,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`
+        ${geistSans.variable} 
+        ${robotoMono.variable} 
+        ${inter.variable} 
+        ${geistMono.variable} 
+        antialiased 
+        flex
+        min-h-screen
+        min-w-full
+        `
+        }
+
       >
-        {children}
+        <ThemeProvider
+          attribute="class"       // Переключать через класс 'dark'
+          defaultTheme="system"
+          enableSystem
+        >
+          <Header />
+          <div className="flex-1 min-w-auto">
+            {children}
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

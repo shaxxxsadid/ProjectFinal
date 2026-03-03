@@ -6,8 +6,8 @@ interface DBConfig {
 }
 
 class DB implements DBConfig {
-    private readonly uri: string;
-    private readonly options: object;
+    readonly uri: string;
+    readonly options: object;
     private isConnected: boolean = false;
 
     constructor(config: DBConfig) {
