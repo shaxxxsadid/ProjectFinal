@@ -98,18 +98,21 @@ export const textAnimations = {
   },
   typing: {
     initial: { 
-      width: 0, 
-      opacity: 1, 
-      overflow: "hidden" // Скрываем текст за пределами ширины
+      opacity: 0,
+      x: -10,
     },
     animate: { 
-      width: "fit-content", // Или "100%", если контейнер фиксирован
-      opacity: 1, 
-      overflow: "hidden" 
+      opacity: 1,
+      x: 0,
+    },
+    exit: {
+      opacity: 0,
+      x: -10,
     },
     transition: { 
-      duration: 2, 
-      ease: "linear" // Печать должна быть равномерной
+      duration: 0.4, 
+      ease: [0.42, 0.97, 0.52, 1.49],
+      delay: 0.1
     },
   },
 } as const;

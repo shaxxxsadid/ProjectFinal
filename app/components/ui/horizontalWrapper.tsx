@@ -1,58 +1,54 @@
-"use client";
+// app/components/ui/horizontalWrapper.tsx
+'use client';
 
-import { motion, MotionProps } from "motion/react";
+import { useEffect, useState } from 'react';
 
-interface Props extends MotionProps {
-    width?: number;
+interface Props {
+    width?: number | string;
     height?: number | string;
-    color?: string;          // Ручной цвет (приоритет)
-    theme?: "light" | "dark"; // Авто-цвет по теме
+    color?: string;
+    theme?: "light" | "dark";
     className?: string;
+    expand?: boolean;
 }
 
-export function HorizontalWrapper({ 
-    width = 200, 
+export function HorizontalWrapper({
+    width = 200,
     height = 2,
-    color,                // Без дефолта, чтобы проверить наличие
-    theme = "light",      // По умолчанию светлая
+    color,
+    theme = "light",
     className = "",
-    // Motion props
-    initial = { scaleX: 0 },
-    animate = { scaleX: 1 },
-    transition = { duration: 0.5, ease: "easeInOut" },
-    ...restMotionProps
+    expand = false,
 }: Props) {
-    // ✅ Логика цвета: ручной цвет > тема
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);//eslint-disable-line
+    }, []);
+
     const lineColor = color || (theme === "dark" ? "#fff" : "#000");
+    const normalizedHeight = typeof height === "number" ? `${height}px` : height;
+    const normalizedWidth = typeof width === "number" ? `${width}px` : width;
+
+    // Только рендерим с аниматором после гидратации
+    const shouldAnimate = mounted ? expand : false;
 
     return (
-        <div className={`flex items-center justify-center ${className}`} style={{ width }}>
-            {/* Левая линия */}
-            <motion.div
-                initial={initial}
-                animate={animate}
-                transition={transition}
-                style={{ 
-                    backgroundColor: lineColor, 
-                    height,
-                    flex: 1,
-                    transformOrigin: "right",
+        <div
+            className={`flex items-center justify-center ${className}`}
+            style={{ width: normalizedWidth, minWidth: 0, maxWidth: normalizedWidth }}
+        >
+            <div
+                suppressHydrationWarning
+                style={{
+                    backgroundColor: lineColor,
+                    height: normalizedHeight,
+                    width: "100%",
+                    opacity: shouldAnimate ? 1 : 0,
+                    transform: `scaleX(${shouldAnimate ? 1 : 0})`,
+                    transformOrigin: "center",
+                    transition: "transform 0.3s ease, opacity 0.3s ease",
                 }}
-                {...restMotionProps}
-            />
-
-            {/* Правая линия */}
-            <motion.div
-                initial={initial}
-                animate={animate}
-                transition={transition}
-                style={{ 
-                    backgroundColor: lineColor, 
-                    height,
-                    flex: 1,
-                    transformOrigin: "left",
-                }}
-                {...restMotionProps}
             />
         </div>
     );

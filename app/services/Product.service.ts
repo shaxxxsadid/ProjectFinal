@@ -90,6 +90,27 @@ class ProductService {
             throw error;
         }
     }
+
+    async getAvatar(id: string) {
+        try {
+            const product = await Products.findById(id);
+            if (!product) return null;
+            return product.avatar;
+        } catch (error) {
+            logger.error(`Failed to get product avatar: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
+    async getById(id: string) {
+        try {
+            const product = await Products.findById(id);
+            if (!product) return null;
+            return product;
+        } catch (error) {
+            logger.error(`Failed to get product by id: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
 }
 
 export const productService = new ProductService();

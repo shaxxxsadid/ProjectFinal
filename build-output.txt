@@ -1,0 +1,62 @@
+﻿
+> diplom@0.2.0 build
+> next build
+
+тЦ▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+тЬУ Compiled successfully in 3.0s
+  Running TypeScript ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/19) ...
+  Generating static pages using 15 workers (4/19) 
+  Generating static pages using 15 workers (9/19) 
+  Generating static pages using 15 workers (14/19) 
+тЬУ Generating static pages using 15 workers (19/19) in 490.7ms
+  Finalizing page optimization ...
+
+Route (app)
+тФМ тЧЛ /_not-found
+тФЬ ╞Т /api/accounts
+тФЬ ╞Т /api/accounts/[id]
+тФЬ ╞Т /api/accounts/provider/[providerAccountId]
+тФЬ ╞Т /api/accounts/user/[userId]
+тФЬ ╞Т /api/auth/[...nextauth]
+тФЬ ╞Т /api/avatar/[email]
+тФЬ ╞Т /api/avatar/product/[sku]
+тФЬ ╞Т /api/business
+тФЬ ╞Т /api/business/[taxId]
+тФЬ ╞Т /api/products
+тФЬ ╞Т /api/products/[sku]
+тФЬ ╞Т /api/providers
+тФЬ ╞Т /api/providers/[publicId]
+тФЬ ╞Т /api/roles
+тФЬ ╞Т /api/roles/[name]
+тФЬ ╞Т /api/roles/id/[id]
+тФЬ ╞Т /api/stoke
+тФЬ ╞Т /api/stoke/[warehouseId]
+тФЬ ╞Т /api/stoke/productId/[productId]
+тФЬ ╞Т /api/users
+тФЬ ╞Т /api/users/[email]
+тФЬ ╞Т /api/users/active
+тФЬ ╞Т /api/users/id/[id]
+тФЬ ╞Т /api/users/inactive
+тФЬ ╞Т /api/warehouse
+тФФ ╞Т /api/warehouse/[code]
+
+Route (pages)
+тФМ тЧЛ / (434 ms)
+тФЬ   /_app
+тФЬ ╞Т /catalog
+тФЬ ╞Т /dashboard
+тФЬ тЧЛ /dashboard/admin (434 ms)
+тФЬ тЧЛ /login (407 ms)
+тФЬ тЧЛ /profile (407 ms)
+тФФ тЧЛ /test (435 ms)
+
+╞Т Proxy (Middleware)
+
+тЧЛ  (Static)   prerendered as static content
+╞Т  (Dynamic)  server-rendered on demand
+

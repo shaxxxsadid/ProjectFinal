@@ -1,20 +1,16 @@
+// app/components/ui/button.tsx
 'use client';
 
 import { motion } from "motion/react";
 import { HTMLMotionProps } from "motion/react";
-import { useTheme } from "next-themes";
 
 interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
-    onClick?: () => void
+    onClick?: () => void;
     img?: {
         lightIcon: string;
         darkIcon: string;
         width: number;
         height: number;
-        whileHover?: Record<string, any>; //eslint-disable-line
-        whileTap?: Record<string, any>; //eslint-disable-line
-        animate?: Record<string, any>; //eslint-disable-line
-        transition?: Record<string, any>; //eslint-disable-line
     };
     className?: string;
     textOnBtn?: string;
@@ -23,31 +19,39 @@ interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
 }
 
 export default function Button(props: ButtonProps) {
-    const { resolvedTheme } = useTheme();
-    const isDark = resolvedTheme === 'dark';
     const { onClick, img, className, textOnBtn, type, ariaLabel, ...restMotionProps } = props;
+    
     return (
         <motion.button
-            className={className ? className : 'bg-slate-500 text-white rounded defaultTransitionCubicBezier'}
+            className={className ?? 'bg-slate-500 text-white rounded defaultTransitionCubicBezier'}
             onClick={onClick}
-            type={type ? type : 'button'}
-            aria-label={ariaLabel ? ariaLabel : ''}
+            type={type ?? 'button'}
+            aria-label={ariaLabel ?? ''}
             {...restMotionProps}
         >
-            {img ?
-                <motion.img
-                    src={isDark ? img.darkIcon : img.lightIcon}
-                    alt="img"
-                    width={img.width}
-                    height={img.height}
-                    whileHover={img.whileHover}
-                    whileTap={img.whileTap}
-                    animate={img.animate}
-                    transition={img.transition}
-                /> : ''
-            }
+            {img ? (
+                <span className="relative inline-block" style={{ width: img.width, height: img.height }}>
+                    {/* 🌞 Светлая иконка — видна по умолчанию */}
+                    <img
+                        src={img.lightIcon}
+                        alt="img"
+                        width={img.width}
+                        height={img.height}
+                        className="block dark:hidden"
+                        suppressHydrationWarning
+                    />
+                    {/* 🌙 Тёмная иконка — видна только при классе .dark на <html> */}
+                    <img
+                        src={img.darkIcon}
+                        alt="img"
+                        width={img.width}
+                        height={img.height}
+                        className="hidden dark:block"
+                        suppressHydrationWarning
+                    />
+                </span>
+            ) : null}
             {textOnBtn}
-
         </motion.button>
     );
 }

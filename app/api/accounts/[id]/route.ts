@@ -3,13 +3,14 @@ import { accountsService } from "@/app/services/Account.service";
 import { logger } from "@/app/lib/logger";
 
 export async function GET(
-    request: Request, 
-    { params }: { params: { id: string } }
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        logger.info(`API: Received GET request for account with ID - ${params.id}`);
+        const { id } = await params;
+        logger.info(`API: Received GET request for account with ID - ${id}`);
         await connectToDatabase();
-        const accounts = await accountsService.getAccountById(params.id);
+        const accounts = await accountsService.getAccountById(id);
         if (!accounts) return Response.json({ success: false, error: 'Account not found' }, { status: 404 });
         return Response.json({ success: true, data: accounts });
     } catch (error) {

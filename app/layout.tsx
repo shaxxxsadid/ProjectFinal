@@ -1,29 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
 import Header from "@/app/components/ui/header";
 import { ThemeProvider } from "./components/ui/theme-provider";
-
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const robotoMono = Geist_Mono({
-  variable: "--font-roboto-mono",
-  subsets: ["latin"],
-});
-
-const inter = Geist({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -36,30 +17,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", GeistSans.variable)}>
       <body
-        className={`
-        ${geistSans.variable} 
-        ${robotoMono.variable} 
-        ${inter.variable} 
-        ${geistMono.variable} 
-        antialiased 
-        flex
-        min-h-screen
-        min-w-full
-        `
-        }
-
+        className={cn(
+          GeistSans.variable,
+          GeistMono.variable,
+          "antialiased min-h-screen bg-background text-foreground"
+        )}
       >
         <ThemeProvider
-          attribute="class"       // Переключать через класс 'dark'
+          attribute="class"
           defaultTheme="system"
           enableSystem
         >
+          {/* Фиксированный сайдбар */}
           <Header />
-          <div className="flex-1 min-w-auto">
-            {children}
-          </div>
+          
+          {/* Основной контент - сдвинут вправо */}
+          <main className="ml-20 min-h-screen transition-all duration-300 ease-in-out ">
+            <div className="w-full">
+              {children}
+            </div>
+          </main>
+
         </ThemeProvider>
       </body>
     </html>
