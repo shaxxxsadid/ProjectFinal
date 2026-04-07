@@ -1,3 +1,4 @@
+import { IUser } from "@/types/dbData";
 import { logger } from "../lib/logger";
 import { Users } from "../models/Users";
 
@@ -15,7 +16,7 @@ class UsersService {
     async getUserByEmail(email: string) {
         try {
             const user = await Users.findOne({ email });
-            return user;
+            return user as IUser;
         } catch (error) {            
             logger.error(`Failed to fetch user by email: ${error instanceof Error ? error.message : error}`);
             throw error;
@@ -74,6 +75,16 @@ class UsersService {
             return deletedUser;
         } catch (error) {
             logger.error(`Failed to delete user: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
+
+    async getAvatar(email: string) {
+        try {
+            const user = await Users.findOne({ email });
+            return user?.avatar;
+        } catch (error) {
+            logger.error(`Failed to fetch user avatar: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }

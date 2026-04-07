@@ -12,6 +12,9 @@ import { useTheme } from "next-themes";
 import { FaRegEnvelope, FaTelegramPlane } from "react-icons/fa";
 import Link from "next/link";
 import { FaGithub } from "react-icons/fa6";
+import { signOut, useSession } from "next-auth/react";
+import Image from "next/image";
+import UserAvatar from "./userAvatar";
 
 const NAV_ITEM_BASE = [
     "relative flex justify-start items-center w-full gap-6",
@@ -43,17 +46,16 @@ function NavItem({ children, onClick, className = "" }: NavItemProps) {
             {/* скользящий фоновый блик */}
             <span
                 aria-hidden
-                className="pointer-events-none absolute inset-0 translate-x-[-100%] group-hover:translate-x-0
-                           bg-gradient-to-r from-white/5 to-transparent
-                           transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                className="pointer-events-none absolute inset-0 translate-x-full group-hover:translate-x-0
+                           bg-linear-to-r from-white/5 to-transparent
+                           transition-transform duration-500 ease-in-out"
             />
             {/* нижняя линия раскрывается слева */}
             <span
                 aria-hidden
-                className="pointer-events-none absolute bottom-0 left-4 right-4 h-px
-                           bg-white/20 dark:bg-white/20 bg-black/20
+                className="pointer-events-none absolute bottom-0 left-4 right-4 h-px bg-foreground/20
                            scale-x-0 group-hover:scale-x-100 origin-left
-                           transition-transform duration-350 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                           transition-transform duration-350 ease-in-out"
             />
             {children}
         </li>
@@ -71,8 +73,8 @@ export default function Header() {
         "p-4 defaultTransitionEaseInOut";
     const router = useRouter();
     const { resolvedTheme } = useTheme();
-    const isDark = resolvedTheme === "dark";
-
+    const { data: session, status } = useSession();
+    console.log(session, status);
     const socials = {
         github: {
             link: "https://github.com/shaxxxsadid",
@@ -158,7 +160,7 @@ export default function Header() {
                     </NavItem>
 
                     {/* Каталог */}
-                    <NavItem onClick={() => router.push("/catalog")}>
+                    <NavItem onClick={() => router.push("/pages/catalog")}>
                         <Button
                             {...iconBtn({
                                 darkIcon: Images.dark.catalog.src,
@@ -186,14 +188,26 @@ export default function Header() {
                     </NavItem>
 
                     {/* Профиль */}
-                    <NavItem onClick={() => router.push("/catalog")}>
-                        <Button
-                            {...iconBtn({
-                                darkIcon: Images.dark.userPlaceholder.src,
-                                lightIcon: Images.light.userPlaceholder.src,
-                            })}
-                            onClick={() => router.push("/catalog")}
-                        />
+                    <NavItem onClick={() => router.push("/pages/profile")}>
+                        {status === "unauthenticated" ?
+                            <Button
+                                {...iconBtn({
+                                    darkIcon: Images.dark.userPlaceholder.src,
+                                    lightIcon: Images.light.userPlaceholder.src,
+                                })}
+                                onClick={() => router.push("/login")} // Перенаправляем на страницу входа
+                            />
+                            : session?.user?.image ?
+                            <Image
+                                src={session?.user?.image || Images.dark.userPlaceholder.src} 
+                                width={40}
+                                height={40}
+                                alt="User profile"
+                                className="rounded-full"
+                            /> :
+                            <UserAvatar name={session?.user?.name || "user"} email={session?.user?.email as string} size="sm" />
+                        }
+
                         <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
                             Профиль
                         </TXT>
@@ -201,7 +215,7 @@ export default function Header() {
 
                     {/* ThemeToggle */}
                     <li className="flex w-full justify-center items-center">
-                        <HorizontalWrapper className="w-2/3 flex justify-center items-center" expand={expand} theme={isDark ? "dark" : "light"} />
+                        <HorizontalWrapper className="w-2/3 flex justify-center items-center" expand={expand} theme={resolvedTheme as "light" | "dark"} />
                     </li>
 
                     {/* Контакты */}
@@ -249,7 +263,10 @@ export default function Header() {
                             width: 45,
                             height: 45,
                         }}
-                        onClick={() => router.push("/login")}
+                        onClick={() => {
+                            if (session) signOut()
+                            else router.push("/pages/login");
+                        }}
                         ariaLabel="Войти"
                         className="rounded-full defaultTransitionCubicBezier hover:cursor-pointer"
                     />

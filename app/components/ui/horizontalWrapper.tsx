@@ -15,8 +15,6 @@ interface Props {
 export function HorizontalWrapper({
     width = 200,
     height = 2,
-    color,
-    theme = "light",
     className = "",
     expand = false,
 }: Props) {
@@ -26,7 +24,6 @@ export function HorizontalWrapper({
         setMounted(true);//eslint-disable-line
     }, []);
 
-    const lineColor = color || (theme === "dark" ? "#fff" : "#000");
     const normalizedHeight = typeof height === "number" ? `${height}px` : height;
     const normalizedWidth = typeof width === "number" ? `${width}px` : width;
 
@@ -40,8 +37,8 @@ export function HorizontalWrapper({
         >
             <div
                 suppressHydrationWarning
+                className="bg-foreground"
                 style={{
-                    backgroundColor: lineColor,
                     height: normalizedHeight,
                     width: "100%",
                     opacity: shouldAnimate ? 1 : 0,

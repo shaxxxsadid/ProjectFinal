@@ -51,6 +51,15 @@ class RolesService {
             throw error;
         }
     }
+    async getRoleById(_id: string) {
+        try {
+            const role = await Roles.findById(_id);
+            return role;
+        } catch (error) {
+            logger.error(`Failed to fetch role by id: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
 }
 
 const rolesService = new RolesService();

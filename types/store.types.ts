@@ -16,6 +16,12 @@ export interface ProductShort {
     _id: string;
     name: string;
     sku: string;
+    weight: number;
+    length: number;
+    width: number;
+    height: number;
+    isIPPC_Certified: boolean;
+    isHeatTreated: boolean;
     categoryId: string;
     avatar?: string;
 }
@@ -68,12 +74,14 @@ export interface DataListState<T> {
 
 export interface AdminStoreState {
     // Products
+    productIsLoading: boolean;
     products: DataListState<ProductShort>;
     setProducts: (items: ProductShort[], total: number) => void;
     setProductsLoading: (loading: boolean) => void;
     setProductsError: (error: string | null) => void;
     searchProducts: (query: string) => void;
     setProductPage: (page: number) => void;
+    fetchProducts: (productId: ProductShort) => void;
 
     // Users
     users: DataListState<UserShort>;

@@ -5,6 +5,7 @@ import "./globals.css";
 import Header from "@/app/components/ui/header";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { cn } from "@/lib/utils";
+import { SessionProviderWrapper } from "./components/sessionProvider";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -25,22 +26,24 @@ export default function RootLayout({
           "antialiased min-h-screen bg-background text-foreground"
         )}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-        >
-          {/* Фиксированный сайдбар */}
-          <Header />
-          
-          {/* Основной контент - сдвинут вправо */}
-          <main className="ml-20 min-h-screen transition-all duration-300 ease-in-out ">
-            <div className="w-full">
-              {children}
-            </div>
-          </main>
+        <SessionProviderWrapper>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+          >
+            {/* Фиксированный сайдбар */}
+            <Header />
 
-        </ThemeProvider>
+            {/* Основной контент - сдвинут вправо */}
+            <main className="ml-20 min-h-screen transition-all duration-300 ease-in-out ">
+              <div className="w-full">
+                {children}
+              </div>
+            </main>
+
+          </ThemeProvider>
+        </SessionProviderWrapper>
       </body>
     </html>
   );
