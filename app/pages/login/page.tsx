@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Meteors } from "@/app/components/ui/meteors";
 import { signIn } from "next-auth/react"
 import { FaGithubAlt, FaGoogle, FaYandexInternational } from "react-icons/fa6";
-
+import { toast } from "react-hot-toast";
+import { useDebounce } from "@/app/hooks/debounce";
 export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const debouncedEmail = useDebounce(email, 1000);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -26,12 +28,29 @@ export default function Login() {
 
         if (result?.error) {
             console.error('Login failed:', result.error);
+            toast.error('Неверный логин или пароль');
 
-            alert('Неверный email или пароль');
         } else {
             window.location.href = '/';
+            toast.success('Успешная авторизация');
         }
     };
+
+
+    const isValidEmail = (email: string) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    useEffect(() => {
+        if (debouncedEmail && !isValidEmail(debouncedEmail)) {
+            toast.error('Неверный формат электронной почты');
+        }
+        if (debouncedEmail && isValidEmail(debouncedEmail)) {
+            toast.dismiss();
+        }
+    }, [debouncedEmail]);
+
     const providerItems = {
         google: {
             name: 'Google',
@@ -144,7 +163,7 @@ export default function Login() {
                         className={cn(
                             "w-full py-3.5 px-4 rounded-xl font-semibold text-sm uppercase tracking-wider",
                             "bg-primary/10 text-primary-foreground)",
-                            "border border-foreground/10 hover:opacity-90",
+                            "border border-foreground/10 hover:opacity-90 mt-6",
                             "focus:outline-none focus:ring-2 focus:ring-(--ring)/30",
                             "active:scale-[0.98] transition-all duration-200",
                             "disabled:opacity-50 disabled:cursor-not-allowed",

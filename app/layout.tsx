@@ -6,6 +6,7 @@ import Header from "@/app/components/ui/header";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { cn } from "@/lib/utils";
 import { SessionProviderWrapper } from "./components/sessionProvider";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -32,6 +33,19 @@ export default function RootLayout({
             defaultTheme="system"
             enableSystem
           >
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: 'var(--foreground)',
+                  color: 'var(--background)',
+                  border: '1px solid var(--background)',
+                },
+                success: { duration: 2000, iconTheme: { primary: '#22c55e', secondary: 'var(--foreground)' } },
+                error: { duration: 3000, iconTheme: { primary: '#ef4444', secondary: 'var(--foreground)' } },
+              }}
+            />
             {/* Фиксированный сайдбар */}
             <Header />
 

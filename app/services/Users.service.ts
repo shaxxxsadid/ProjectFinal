@@ -1,4 +1,4 @@
-import { IUser } from "@/types/dbData";
+import { IAvatar, IUser } from "@/types/dbData";
 import { logger } from "../lib/logger";
 import { Users } from "../models/Users";
 
@@ -16,12 +16,14 @@ class UsersService {
     async getUserByEmail(email: string) {
         try {
             const user = await Users.findOne({ email });
-            return user as IUser;
+            const {avatar, ...rest} = user;
+            return rest as IUser;
         } catch (error) {            
             logger.error(`Failed to fetch user by email: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
+
 
     async createUser(userData: { 
         email: string; 
@@ -85,6 +87,26 @@ class UsersService {
             return user?.avatar;
         } catch (error) {
             logger.error(`Failed to fetch user avatar: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
+
+    async updateUserAvatar(email: string, avatar: IAvatar) {
+        try {
+            const updatedUser = await Users.findOneAndUpdate({ email }, { avatar: avatar }, { new: true });
+            return updatedUser;
+        } catch (error) {
+            logger.error(`Failed to update user avatar: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
+
+    async updateUserPassword(email: string, passwordHash: string) {
+        try {
+            const updatedUser = await Users.findOneAndUpdate({ email }, { passwordHash }, { new: true });
+            return updatedUser;
+        } catch (error) {
+            logger.error(`Failed to update user password: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }

@@ -13,7 +13,6 @@ interface Props {
 }
 
 export function HorizontalWrapper({
-    width = 200,
     height = 2,
     className = "",
     expand = false,
@@ -25,15 +24,13 @@ export function HorizontalWrapper({
     }, []);
 
     const normalizedHeight = typeof height === "number" ? `${height}px` : height;
-    const normalizedWidth = typeof width === "number" ? `${width}px` : width;
 
     // Только рендерим с аниматором после гидратации
     const shouldAnimate = mounted ? expand : false;
 
     return (
         <div
-            className={`flex items-center justify-center ${className}`}
-            style={{ width: normalizedWidth, minWidth: 0, maxWidth: normalizedWidth }}
+            className={`flex items-center justify-center ${className} w-full`}
         >
             <div
                 suppressHydrationWarning

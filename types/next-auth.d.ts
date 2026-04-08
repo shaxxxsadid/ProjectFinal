@@ -8,6 +8,7 @@ declare module "next-auth" {
         role?: string;
         businessProfileId?: string;
         passwordHash?: string;
+        createdAt?: Date;
         isActive?: boolean;
     }
     
@@ -21,6 +22,9 @@ declare module "next-auth" {
                 type: string;
                 data: Buffer;
             };
+            businessProfileId?: string;
+            passwordHash?: string;
+            createdAt?: Date;
             linkedProviders?: {
                 id: string;
                 provider: string;

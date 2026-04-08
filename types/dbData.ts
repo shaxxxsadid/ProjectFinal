@@ -1,5 +1,11 @@
 import { Types } from "mongoose";
 
+export interface IAvatar {
+    fileName: string;
+    type: string;
+    data: Buffer;
+}
+
 // ========== ACCOUNTS ==========
 export interface IAccount {
     _id?: Types.ObjectId;

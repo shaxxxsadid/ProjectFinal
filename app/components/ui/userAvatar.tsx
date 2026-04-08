@@ -16,7 +16,7 @@ const UserAvatar = ({
   const [avatar, setAvatar] = useState<string | null>(null);
 
   const sizeClasses = {
-    sm: 'w-12 h-12 text-sm',
+    sm: 'w-11 h-11 text-sm',
     md: 'w-16 h-16 text-base',
     lg: 'w-20 h-20 text-lg',
     xl: 'w-24 h-24 text-xl'

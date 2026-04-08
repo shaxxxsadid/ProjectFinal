@@ -63,6 +63,19 @@ class BusinessProfileService {
             throw error;
         }
     }
+    async getById(_id: string) {
+        try {
+            const profile = await BusinessProfile.findById(_id);
+            if (!profile) {
+                logger.warn(`Business profile with _id ${_id} not found`);
+                return null;
+            }
+            return profile;
+        } catch (error) {
+            logger.error(`Failed to fetch business profile by _id ${_id}: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
 }
 
 export const businessProfileService = new BusinessProfileService();

@@ -1,6 +1,8 @@
 import { connectToDatabase } from "@/app/lib/mongoose";
 import { usersService } from "@/app/services/Users.service";
+import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { AuthOptions } from "../../auth/[...nextauth]/route";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -63,4 +65,21 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
+}
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await getServerSession(AuthOptions);
+    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    await connectToDatabase();
+
+    const { avatar } = await req.json();
+
+    await usersService.updateUserAvatar(session.user.email, avatar);
+    console.log(`Avatar updated for ${session.user.email} to ${avatar}`);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to update avatar' }, { status: 500 });
+  }
 }
