@@ -174,13 +174,13 @@ export default function Header() {
                     </NavItem>
 
                     {/* Админ */}
-                    <NavItem onClick={() => router.push("/catalog")}>
+                    <NavItem onClick={() => router.push("/dashboard/admin")}>
                         <Button
                             {...iconBtn({
                                 darkIcon: Images.dark.admin.src,
                                 lightIcon: Images.light.admin.src,
                             })}
-                            onClick={() => router.push("/catalog")}
+                            onClick={() => router.push("/dashboard/admin")}
                         />
                         <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
                             Админ

@@ -14,40 +14,44 @@ import {
     FaUser, FaEnvelope, FaCalendarAlt, FaShieldAlt,
     FaSignOutAlt, FaCog, FaLock, FaChevronRight, FaCamera
 } from 'react-icons/fa';
-import { ModalChangePass } from './modalChangePass';
+import { ChangeUsernameModal } from './ChangeUsernameModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
-// ─────────────────────────────────────────────
-// 🎨 SettingsItem (без изменений)
-// ─────────────────────────────────────────────
 const SettingsItem = ({
     icon: Icon,
     label,
     value,
     onClick,
+    disabled,
 }: {
     icon: React.ElementType;
     label: string;
     value?: string;
     onClick?: () => void;
+    disabled?: boolean;
 }) => (
     <button
         onClick={onClick}
+        disabled={disabled}
         className={cn(
             'w-full grid grid-cols-2 items-center justify-center p-4 rounded-xl',
             'bg-background/30 border border-foreground/10',
-            'hover:bg-background/50 hover:border-foreground/30 hover:cursor-pointer',
+            onClick && !disabled && 'hover:bg-background/50 hover:border-foreground/30 hover:cursor-pointer',
             'transition-all duration-200 group',
+            disabled && 'opacity-50 cursor-not-allowed',
         )}
     >
         <div className="flex w-full items-center gap-3">
-            <div className={cn('p-2 rounded-lg transition-colors')}>
+            <div className={cn('p-2 rounded-lg transition-colors', onClick && !disabled && 'group-hover:bg-foreground/5')}>
                 <Icon className="w-4 h-4" />
             </div>
             <span className="text-sm font-medium text-foreground">{label}: </span>
-            {value && <span className="text-xs text-muted-foreground">{value}</span>}
+            {value && <span className="text-xs text-muted-foreground truncate">{value}</span>}
         </div>
         <div className='flex w-full justify-end items-center'>
-            <FaChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+            {onClick && !disabled && (
+                <FaChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+            )}
         </div>
     </button>
 );
@@ -56,7 +60,11 @@ export default function ProfilePage() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [isLeaving, setIsLeaving] = useState(false);
+    
+    // 🔀 Два независимых состояния для модалок
+    const [showUsernameModal, setShowUsernameModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     if (status === 'loading') {
@@ -82,12 +90,38 @@ export default function ProfilePage() {
         await signOut({ callbackUrl: '/pages/login' });
     };
 
+    const handleUsernameChange = async ({ firstname, lastname }: { 
+        firstname: string; 
+        lastname: string; 
+    }) => {
+        try {
+            const newUsername = `${lastname} ${firstname}`.trim();
+            
+            const res = await fetch('/api/public/user/username', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: userEmail, 
+                    newUsername 
+                }),
+            });
+            
+            const data = await res.json();
+            if (!res.ok) return { success: false, error: data.error || 'Ошибка обновления' };
+            
+            return { success: true };
+        } catch {
+            return { success: false, error: 'Ошибка соединения' };
+        }
+    };
+
     const handlePasswordChange = async ({ currentPassword, newPassword }: {
         currentPassword: string;
         newPassword: string;
     }) => {
         try {
-            const res = await fetch('/api/users/password', {
+            console.log(userEmail, currentPassword, newPassword);
+            const res = await fetch('/api/public/user/password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -98,34 +132,37 @@ export default function ProfilePage() {
             });
 
             const data = await res.json();
-
             if (!res.ok) {
                 return { success: false, error: data.error || 'Ошибка сервера' };
             }
-
             return { success: true };
         } catch {
             return { success: false, error: 'Ошибка соединения' };
         }
     };
 
-    // 📸 Обработка загрузки аватара
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         // TODO: Реализуйте загрузку файла на сервер
-        // Пример:
-        /*
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch('/api/users/avatar', { 
-            method: 'PUT', 
-            body: formData 
-        });
-        if (res.ok) window.location.reload();
-        */
-        alert('Загрузка аватара: подключите API endpoint /api/users/avatar');
+        
+        try {
+            const res = await fetch('/api/users/avatar', { 
+                method: 'PUT', 
+                body: formData 
+            });
+            if (res.ok) {
+                // Перезагружаем страницу для обновления аватара
+                window.location.reload();
+            } else {
+                alert('Ошибка загрузки аватара');
+            }
+        } catch {
+            alert('Ошибка соединения при загрузке аватара');
+        }
     };
 
     const roleColors: Record<string, string> = {
@@ -209,6 +246,16 @@ export default function ProfilePage() {
                                     Защищённое соединение
                                 </div>
                             </div>
+                            
+                            {/* Role Badge */}
+                            <div className="mt-3 flex justify-center md:justify-start">
+                                <span className={cn(
+                                    'px-3 py-1 rounded-full text-xs font-medium',
+                                    roleColors[userRole] || roleColors.user
+                                )}>
+                                    {roleLabels[userRole]}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Logout Button */}
@@ -234,6 +281,7 @@ export default function ProfilePage() {
                     <div className="mt-6 w-1/2">
                         <HorizontalWrapper expand height={1} className="opacity-30 w-full max-w-full" />
                     </div>
+                    
                     {/* Settings */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -246,11 +294,21 @@ export default function ProfilePage() {
                             Настройки аккаунта
                         </h3>
 
-                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                            <SettingsItem icon={FaUser} label="Имя пользователя" value={userName} />
-                            <SettingsItem icon={FaEnvelope} label="Email" value={userEmail} />
+                        <div className="grid grid-cols-1 gap-4">
+                            <SettingsItem 
+                                icon={FaEnvelope} 
+                                label="Email" 
+                                value={userEmail} 
+                                disabled
+                            />
 
-                            {/* Password change item - открывает модальное окно */}
+                            <SettingsItem 
+                                icon={FaUser} 
+                                label="Имя пользователя" 
+                                value={userName} 
+                                onClick={() => setShowUsernameModal(true)}
+                            />
+
                             <SettingsItem
                                 icon={FaLock}
                                 label="Сменить пароль"
@@ -262,10 +320,21 @@ export default function ProfilePage() {
                 </motion.div>
             </div>
 
-            {/* 🔐 Modal for Password Change */}
+            {/* 🔀 Две независимые модалки */}
             <AnimatePresence>
+                {/* Модалка смены имени */}
+                {showUsernameModal && (
+                    <ChangeUsernameModal
+                        isOpen={showUsernameModal}
+                        onClose={() => setShowUsernameModal(false)}
+                        initialUsername={userName}
+                        onSubmit={handleUsernameChange}
+                    />
+                )}
+                
+                {/* Модалка смены пароля */}
                 {showPasswordModal && (
-                    <ModalChangePass
+                    <ChangePasswordModal
                         isOpen={showPasswordModal}
                         onClose={() => setShowPasswordModal(false)}
                         userEmail={userEmail}
@@ -274,7 +343,7 @@ export default function ProfilePage() {
                 )}
             </AnimatePresence>
 
-            {/* Loading Overlay */}
+            {/* Loading Overlay при выходе */}
             {isLeaving && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                     <Loader text="Выход из системы..." position="center" />

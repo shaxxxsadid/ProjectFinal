@@ -1,13 +1,18 @@
 import { connectToDatabase } from "@/app/lib/mongoose";
-import { businessProfileService } from "@/app/services/BusinessProfile.service"; 
+import { businessProfileService } from "@/app/services/BusinessProfile.service";
 import { logger } from "@/app/lib/logger";
 
 export async function GET() {
     try {
         await connectToDatabase();
         const business = await businessProfileService.getAllBusinessProfiles();
-        if (!business || business.length === 0) return Response.json({ success: false, error: 'Business profiles not found' }, { status: 404 });
-        return Response.json({ success: true, data: business });
+
+        return Response.json({
+            success: true,
+            data: business || [],
+            count: business?.length || 0
+        });
+
     } catch (error) {
         logger.error({
             msg: 'API: Failed to get business profiles',
@@ -44,7 +49,7 @@ export async function POST(request: Request) {
         status: enum (required, one of "active", "inactive")
     }
     Note: createdAt and updatedAt are set automatically
-*/    
+*/
 export async function PUT(request: Request) {
 
     const body = await request.json();

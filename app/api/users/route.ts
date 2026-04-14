@@ -51,3 +51,4 @@ export async function DELETE(request: Request) {
         return Response.json({ success: false, error: 'Failed to connect to database' }, { status: 500 });
     }
 }
+

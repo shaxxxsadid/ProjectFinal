@@ -7,11 +7,13 @@ import { fetchAvatar } from '@/app/lib/avatar';
 const UserAvatar = ({
   name,
   email,
-  size = 'lg'
+  size = 'lg',
+  avatarVersion
 }: {
   name: string;
   email?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  avatarVersion?: number;
 }) => {
   const [avatar, setAvatar] = useState<string | null>(null);
 
@@ -26,12 +28,12 @@ const UserAvatar = ({
     if (!email) return;
 
     let mounted = true;
-    fetchAvatar(email, 'user', 'email').then(res => {
+    fetchAvatar(email, 'user', 'email', avatarVersion).then(res => {
       if (mounted) setAvatar(res.success && res.data ? res.data : null);
     });
 
     return () => { mounted = false; };
-  }, [email]);
+  }, [email, avatarVersion]);
 
   if (avatar) {
     return (

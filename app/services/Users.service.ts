@@ -16,42 +16,43 @@ class UsersService {
     async getUserByEmail(email: string) {
         try {
             const user = await Users.findOne({ email });
-            const {avatar, ...rest} = user;
-            return rest as IUser;
-        } catch (error) {            
+            return user as IUser;
+        } catch (error) {
             logger.error(`Failed to fetch user by email: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
 
 
-    async createUser(userData: { 
-        email: string; 
-        passwordHash: string; 
-        isActive: boolean; 
-        username?: string; 
-        firstName?: string; 
-        lastName?: string; 
-        roleId?: string; 
-        businessProfileId?: string }) {
+    async createUser(userData: {
+        email: string;
+        passwordHash: string;
+        isActive: boolean;
+        username?: string;
+        firstName?: string;
+        lastName?: string;
+        roleId?: string;
+        businessProfileId?: string
+    }) {
         try {
             const newUser = await Users.create(userData);
             return newUser;
-        }catch (error) {
+        } catch (error) {
             logger.error(`Failed to create user: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
 
-    async updateUser(_id: string, updateData: { 
-        email?: string; 
-        passwordHash?: string; 
-        isActive?: boolean; 
-        username?: string; 
-        firstName?: string; 
-        lastName?: string; 
-        roleId?: string; 
-        businessProfileId?: string }) {
+    async updateUser(_id: string, updateData: {
+        email?: string;
+        passwordHash?: string;
+        isActive?: boolean;
+        username?: string;
+        firstName?: string;
+        lastName?: string;
+        roleId?: string;
+        businessProfileId?: string
+    }) {
         try {
             const updatedUser = await Users.findByIdAndUpdate(_id, { ...updateData, updatedAt: new Date() }, { new: true });
             return updatedUser;
@@ -101,12 +102,34 @@ class UsersService {
         }
     }
 
+    async updateUserAvatarById(_id: string, avatar: IAvatar) {
+        try {
+            const updatedUser = await Users.findByIdAndUpdate(_id, { avatar: avatar }, { new: true });
+            return updatedUser;
+        } catch (error) {
+            logger.error(`Failed to update user avatar by id: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
+
     async updateUserPassword(email: string, passwordHash: string) {
         try {
             const updatedUser = await Users.findOneAndUpdate({ email }, { passwordHash }, { new: true });
             return updatedUser;
         } catch (error) {
             logger.error(`Failed to update user password: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
+
+    async toggleUserActive(userId: string) {
+        try {
+            const user = await Users.findById(userId);
+            if (!user) throw new Error('User not found');
+            const updatedUser = await Users.findByIdAndUpdate(userId, { $set: { isActive: !user.isActive } }, { returnDocument: 'after' });
+            return updatedUser;
+        } catch (error) {
+            logger.error(`Failed to toggle user active status: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }

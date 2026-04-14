@@ -2,11 +2,15 @@ type AvatarResult = { success: boolean; data?: string | null; error?: string };
 
 const cache = new Map<string, Promise<AvatarResult>>();
 
-export function fetchAvatar(param: string, endpoint: string, searchParam: string): Promise<AvatarResult> {
+export function fetchAvatar(param: string, endpoint: string, searchParam: string, version?: number): Promise<AvatarResult> {
   if (!param) return Promise.resolve({ success: true, data: null });
-  if (cache.has(param)) return cache.get(param)!;
 
-  const promise = fetch(`/api/avatar/${endpoint}?${searchParam}=${param}`, {
+  const key = `${endpoint}?${searchParam}=${param}:${version ?? 0}`;
+  if (cache.has(key)) return cache.get(key)!;
+
+  const url = `/api/avatar/${endpoint}?${searchParam}=${encodeURIComponent(param)}${version ? `&v=${version}` : ''}`;
+
+  const promise = fetch(url, {
     credentials: 'omit',
   })
     .then(res => {
@@ -16,6 +20,6 @@ export function fetchAvatar(param: string, endpoint: string, searchParam: string
     })
     .catch(err => ({ success: false, error: err.message }));
 
-  cache.set(param, promise);
+  cache.set(key, promise);
   return promise;
 }

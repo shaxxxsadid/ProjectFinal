@@ -1,15 +1,23 @@
 
-
-
 export interface RoleShort {
     _id: string;
     name: string;
+    createdAt: string;
+    updatedAt: string;
+    priority: number;
+    description?: string;
 }
 
 export interface BusinessProfileShort {
     _id: string;
     legalName: string;
+    profileNumber: string;
     type: string;
+    taxId: string;
+    avatar?: string | null; 
+    status: 'active' | 'inactive';
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ProductShort {
@@ -39,6 +47,12 @@ export interface UserShort {
     _id: string;
     email: string;
     username?: string;
+    lastName?: string;
+    firstName?: string;
+    roleId?: string;
+    businessProfileId?: string;
+    createdAt: string;
+    updatedAt: string;
     isActive: boolean;
 }
 
@@ -109,5 +123,40 @@ export interface AdminStoreState {
 
     // General
     limit: number;
+}
+
+export interface UserStoreState {
+    // список загруженных пользователей (или null если не загружено)
+    user: UserShort[] | null;
+    fetchUser: () => Promise<void>;
+    // выбранные пользователи (массив для множественного выбора)
+    selectedUser: UserShort[] | null;
+    // можно передать одного пользователя или массив
+    setSelectedUser: (user: UserShort | null) => void;
+    // установить список пользователей
+    setUser: (user: UserShort[] | null) => void;
+    // переключить активность пользователя по ID
+    toggleUserActive: (userId: string) => Promise<void>;
+    deleteUser: (userId: string) => Promise<void>;
+    updateUser: (userId: string, data: { username?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
+    uploadAvatar: (userId: string | undefined, file: File) => Promise<void>;
+    avatarVersions?: Record<string, number>;
+    bumpAvatarVersion: (userId: string) => void;
+    isLoading: boolean;
+    error: string | null;
+}
+
+export interface RoleStoreState {
+    roles: RoleShort[] | null;
+    fetchRoles: () => Promise<void>;
+    isLoading: boolean;
+    error: string | null;
+}
+
+export interface BusinessProfileStoreState {
+    businessProfiles: BusinessProfileShort[] | null;
+    fetchBusinessProfiles: () => Promise<void>;
+    isLoading: boolean;
+    error: string | null;
 }
 

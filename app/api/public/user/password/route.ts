@@ -3,9 +3,11 @@ import { getServerSession } from 'next-auth';
 import { AuthOptions } from '@/app/api/auth/[...nextauth]/route';
 import { usersService } from '@/app/services/Users.service';
 import bcrypt from 'bcryptjs';
+import { connectToDatabase } from '@/app/lib/mongoose';
 
 export async function POST(req: NextRequest) {
     try {
+
         const session = await getServerSession(AuthOptions);
         if (!session?.user?.email) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,6 +24,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
         }
 
+        await connectToDatabase();
+        console.log(email, currentPassword, newPassword);
         // 1. Получаем пользователя с passwordHash
         const user = await usersService.getUserByEmail(email);
         if (!user || !user.passwordHash) {
