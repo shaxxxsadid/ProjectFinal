@@ -129,9 +129,9 @@ export interface UserStoreState {
     // список загруженных пользователей (или null если не загружено)
     user: UserShort[] | null;
     fetchUser: () => Promise<void>;
-    // выбранные пользователи (массив для множественного выбора)
-    selectedUser: UserShort[] | null;
-    // можно передать одного пользователя или массив
+    // выбранный пользователь (или null если не выбран)
+    selectedUser: UserShort | null;
+    // установить выбранного пользователя (или null)
     setSelectedUser: (user: UserShort | null) => void;
     // установить список пользователей
     setUser: (user: UserShort[] | null) => void;

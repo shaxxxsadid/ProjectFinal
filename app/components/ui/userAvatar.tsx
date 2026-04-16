@@ -8,12 +8,14 @@ const UserAvatar = ({
   name,
   email,
   size = 'lg',
-  avatarVersion
+  avatarVersion,
+  fallbackImage
 }: {
   name: string;
   email?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   avatarVersion?: number;
+  fallbackImage?: string; // ✅ Аватар от провайдера как fallback
 }) => {
   const [avatar, setAvatar] = useState<string | null>(null);
 
@@ -35,6 +37,7 @@ const UserAvatar = ({
     return () => { mounted = false; };
   }, [email, avatarVersion]);
 
+  // Если есть аватар из БД - показываем его
   if (avatar) {
     return (
       <img// eslint-disable-line
@@ -48,6 +51,23 @@ const UserAvatar = ({
       />
     );
   }
+
+  // ✅ Если нет в БД, но есть у провайдера - показываем провайдера
+  if (fallbackImage) {
+    return (
+      <img // eslint-disable-line
+        src={fallbackImage}
+        alt={name}
+        className={cn('rounded-full object-cover aspect-square', sizeClasses[size])}
+        onError={e => {
+          (e.target as HTMLImageElement).style.display = 'none';
+          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+        }}
+      />
+    );
+  }
+
+  // ✅ Если нигде нет - показываем инициалы (плейсхолдер)
 
   return (
     <div className={cn(

@@ -6,12 +6,12 @@ export const useUserStore = create<UserStoreState>()(
     persist(
         (set, get) => ({
             user: null,
-            selectedUser: [] as UserShort[],
+            selectedUser: null as UserShort | null,
             isLoading: false,
             error: null,
 
             setSelectedUser: (user: UserShort | null) =>
-                set({ selectedUser: user ? [user] : [] }),
+                set({ selectedUser: user }),
 
             setUser: (user: UserShort[] | null) => set({ user }),
             avatarVersions: {} as Record<string, number>,
@@ -29,7 +29,13 @@ export const useUserStore = create<UserStoreState>()(
                     if (!res.ok) throw new Error('Failed to fetch user data');
                     const data = await res.json();
                     const users = Array.isArray(data) ? data : data.users ?? [];
-                    set({ user: users, isLoading: false });
+                    
+                    // ✅ Сохраняем существующие версии аватар при обновлении списка
+                    set((state) => ({
+                        user: users,
+                        isLoading: false,
+                        avatarVersions: { ...state.avatarVersions } // Не сбрасываем версии!
+                    }));
                 } catch (error) {
                     set({ user: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
                 }
@@ -39,7 +45,7 @@ export const useUserStore = create<UserStoreState>()(
                 // оптимистичное обновление
                 set((state) => ({
                     user: state.user?.map((u) => u._id === userId ? { ...u, isActive: !u.isActive } : u) ?? null,
-                    selectedUser: state.selectedUser?.map((u) => u._id === userId ? { ...u, isActive: !u.isActive } : u),
+                    selectedUser: state.selectedUser && state.selectedUser._id === userId ? { ...state.selectedUser, isActive: !state.selectedUser.isActive } : state.selectedUser,
                 }));
 
                 try {
@@ -49,26 +55,26 @@ export const useUserStore = create<UserStoreState>()(
 
                     set((state) => ({
                         user: state.user?.map((u) => u._id === userId ? { ...u, isActive: updated.isActive, updatedAt: updated.updatedAt } : u) ?? null,
-                        selectedUser: state.selectedUser?.map((u) => u._id === userId ? { ...u, isActive: updated.isActive, updatedAt: updated.updatedAt } : u),
+                        selectedUser: state.selectedUser && state.selectedUser._id === userId ? { ...state.selectedUser, isActive: updated.isActive, updatedAt: updated.updatedAt } : state.selectedUser,
                     }));
                 } catch (error) {
                     set((state) => ({
                         user: state.user?.map((u) => u._id === userId ? { ...u, isActive: !u.isActive } : u) ?? null,
-                        selectedUser: state.selectedUser?.map((u) => u._id === userId ? { ...u, isActive: !u.isActive } : u),
+                        selectedUser: state.selectedUser && state.selectedUser._id === userId ? { ...state.selectedUser, isActive: !state.selectedUser.isActive } : state.selectedUser,
                     }));
                     console.error(error);
                 }
             },
             deleteUser: async (userId: string) => {
                 let previousUsers: UserShort[] | null = null;
-                let previousSelected: UserShort[] | null = null;
+                let previousSelected: UserShort | null = null;
 
                 set((state) => {
                     previousUsers = state.user;
                     previousSelected = state.selectedUser;
                     return {
                         user: state.user?.filter((u) => u._id !== userId) ?? null,
-                        selectedUser: (state.selectedUser ?? []).filter((u) => u._id !== userId),
+                        selectedUser: state.selectedUser && state.selectedUser._id === userId ? null : state.selectedUser,
                     };
                 });
 
@@ -82,23 +88,26 @@ export const useUserStore = create<UserStoreState>()(
                 } catch (error) {
                     set({
                         user: previousUsers,
-                        selectedUser: previousSelected ?? []
+                        selectedUser: previousSelected
                     });
                     console.error(error);
                 }
             },
             updateUser: async (userId: string, data: { username?: string; password?: string, roleId?: string, businessProfileId?: string, lastName?: string, firstName?: string, email?: string }) => {
                 try {
-                    const res = await fetch(`/api/users/${userId}`, {
+                    const res = await fetch(`/api/users`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data),
+                        body: JSON.stringify({ _id: userId, ...data }),
                     });
                     if (!res.ok) throw new Error('Failed to update user');
+                    
                     const updated = await res.json();
+                    console.log('updated response:', updated);
+                    const updatedUser = updated.data ?? updated;
                     set((state) => ({
-                        user: state.user?.map((u) => u._id === userId ? { ...u, ...updated } : u) ?? null,
-                        selectedUser: state.selectedUser?.map((u) => u._id === userId ? { ...u, ...updated } : u),
+                        user: state.user?.map((u) => u._id === userId ? { ...u, ...updatedUser } : u) ?? null,
+                        selectedUser: state.selectedUser && state.selectedUser._id === userId ? { ...state.selectedUser, ...updatedUser } : state.selectedUser,
                     }));
                     return { success: true };
                 } catch (error) {
@@ -119,7 +128,11 @@ export const useUserStore = create<UserStoreState>()(
                     const res = await fetch('/api/avatar/user', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ _id: userId, avatar: base64 }),
+                        // ✅ Отправляем _id только если он есть (для администратора)
+                        body: JSON.stringify({ 
+                            ...(userId && { _id: userId }), 
+                            avatar: base64 
+                        }),
                     });
 
                     if (!res.ok) throw new Error('Failed to upload avatar');
@@ -143,18 +156,16 @@ export const useUserStore = create<UserStoreState>()(
 
                         set((state) => ({
                             user: state.user?.map((u) => u._id === updatedShort._id ? updatedShort : u) ?? state.user,
-                            selectedUser: [updatedShort]
+                            selectedUser: updatedShort
                         }));
 
+                        // ✅ Бампим версию по ID или email
                         if (userId) {
                             get().bumpAvatarVersion(userId);
-                            if (updatedUser.email) get().bumpAvatarVersion(updatedUser.email);
                         }
-                    } else {
-                        await get().fetchUser();
-                        const updated = get().user?.find((u) => u._id === userId) ?? null;
-                        set({ selectedUser: updated ? [updated] : [] });
-                        if (userId) get().bumpAvatarVersion(userId);
+                        if (updatedUser.email) {
+                            get().bumpAvatarVersion(updatedUser.email);
+                        }
                     }
 
                     set({ isLoading: false });
@@ -170,6 +181,7 @@ export const useUserStore = create<UserStoreState>()(
             partialize: (state) => ({
                 user: state.user,
                 selectedUser: state.selectedUser,
+                avatarVersions: state.avatarVersions, // ✅ Добавили версии аватар
             }),
         }
     )

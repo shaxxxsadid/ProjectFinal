@@ -16,6 +16,8 @@ import {
 } from 'react-icons/fa';
 import { ChangeUsernameModal } from './ChangeUsernameModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import toast from 'react-hot-toast';
+import { useUserStore } from '@/app/store/userStore';
 
 const SettingsItem = ({
     icon: Icon,
@@ -58,13 +60,13 @@ const SettingsItem = ({
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
+    const { user, uploadAvatar, avatarVersions } = useUserStore();
     const router = useRouter();
     const [isLeaving, setIsLeaving] = useState(false);
-    
-    // 🔀 Два независимых состояния для модалок
+
     const [showUsernameModal, setShowUsernameModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     if (status === 'loading') {
@@ -80,35 +82,35 @@ export default function ProfilePage() {
         return null;
     }
 
-    const user = session?.user;
-    const userName = user?.username || 'Пользователь';
-    const userEmail = user?.email || '';
-    const userRole = (user)?.role || 'user';
+    const userSession = session?.user;
+    const userName = userSession?.username || 'Пользователь';
+    const userEmail = userSession?.email || '';
+    const userRole = (userSession)?.role || 'user';
 
     const handleSignOut = async () => {
         setIsLeaving(true);
         await signOut({ callbackUrl: '/pages/login' });
     };
 
-    const handleUsernameChange = async ({ firstname, lastname }: { 
-        firstname: string; 
-        lastname: string; 
+    const handleUsernameChange = async ({ firstname, lastname }: {
+        firstname: string;
+        lastname: string;
     }) => {
         try {
             const newUsername = `${lastname} ${firstname}`.trim();
-            
+
             const res = await fetch('/api/public/user/username', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    email: userEmail, 
-                    newUsername 
+                body: JSON.stringify({
+                    email: userEmail,
+                    newUsername
                 }),
             });
-            
+
             const data = await res.json();
             if (!res.ok) return { success: false, error: data.error || 'Ошибка обновления' };
-            
+
             return { success: true };
         } catch {
             return { success: false, error: 'Ошибка соединения' };
@@ -145,24 +147,23 @@ export default function ProfilePage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // TODO: Реализуйте загрузку файла на сервер
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        try {
-            const res = await fetch('/api/users/avatar', { 
-                method: 'PUT', 
-                body: formData 
-            });
-            if (res.ok) {
-                // Перезагружаем страницу для обновления аватара
-                window.location.reload();
-            } else {
-                alert('Ошибка загрузки аватара');
+        // 1. Конвертируем файл в base64 (data URL)
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        reader.onload = async () => {
+            try {
+                // ✅ Для своего профиля не передаем _id - используется email из сессии
+                await uploadAvatar(undefined, file);
+                toast.success('Аватар обновлён');
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Ошибка загрузки аватара');
             }
-        } catch {
-            alert('Ошибка соединения при загрузке аватара');
-        }
+        };
+
+        reader.onerror = () => {
+            toast.error('Не удалось прочитать файл');
+        };
     };
 
     const roleColors: Record<string, string> = {
@@ -212,7 +213,7 @@ export default function ProfilePage() {
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <div className="absolute inset-0 rounded-full bg-linear-to-r from-primary/50 to-purple-500/50 blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
-                            <UserAvatar name={userName} email={userEmail} size="xl" />
+                            <UserAvatar name={userName} email={userEmail} size="xl" avatarVersion={avatarVersions?.[userEmail]} />
 
                             {/* Hover overlay */}
                             <div className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[2px]">
@@ -246,7 +247,7 @@ export default function ProfilePage() {
                                     Защищённое соединение
                                 </div>
                             </div>
-                            
+
                             {/* Role Badge */}
                             <div className="mt-3 flex justify-center md:justify-start">
                                 <span className={cn(
@@ -281,7 +282,7 @@ export default function ProfilePage() {
                     <div className="mt-6 w-1/2">
                         <HorizontalWrapper expand height={1} className="opacity-30 w-full max-w-full" />
                     </div>
-                    
+
                     {/* Settings */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -295,17 +296,17 @@ export default function ProfilePage() {
                         </h3>
 
                         <div className="grid grid-cols-1 gap-4">
-                            <SettingsItem 
-                                icon={FaEnvelope} 
-                                label="Email" 
-                                value={userEmail} 
+                            <SettingsItem
+                                icon={FaEnvelope}
+                                label="Email"
+                                value={userEmail}
                                 disabled
                             />
 
-                            <SettingsItem 
-                                icon={FaUser} 
-                                label="Имя пользователя" 
-                                value={userName} 
+                            <SettingsItem
+                                icon={FaUser}
+                                label="Имя пользователя"
+                                value={userName}
                                 onClick={() => setShowUsernameModal(true)}
                             />
 
@@ -331,7 +332,7 @@ export default function ProfilePage() {
                         onSubmit={handleUsernameChange}
                     />
                 )}
-                
+
                 {/* Модалка смены пароля */}
                 {showPasswordModal && (
                     <ChangePasswordModal

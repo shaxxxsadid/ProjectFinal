@@ -127,6 +127,7 @@ export const UserCrudModal = ({ isOpen, onClose, onSubmit, mode = 'create', init
 
   return (
     <FormModal
+      key={initialValues ? JSON.stringify(initialValues) : 'new'}
       isOpen={isOpen}
       onClose={onClose}
       title={mode === 'create' ? 'Create user' : 'Edit user'}

@@ -13,8 +13,8 @@ import { FaRegEnvelope, FaTelegramPlane } from "react-icons/fa";
 import Link from "next/link";
 import { FaGithub } from "react-icons/fa6";
 import { signOut, useSession } from "next-auth/react";
-import Image from "next/image";
 import UserAvatar from "./userAvatar";
+import { useUserStore } from "@/app/store/userStore";
 
 const NAV_ITEM_BASE = [
     "relative flex justify-start items-center w-full gap-6",
@@ -74,6 +74,7 @@ export default function Header() {
     const router = useRouter();
     const { resolvedTheme } = useTheme();
     const { data: session, status } = useSession();
+    const { avatarVersions } = useUserStore();
     console.log(session, status);
     const socials = {
         github: {
@@ -195,17 +196,17 @@ export default function Header() {
                                     darkIcon: Images.dark.userPlaceholder.src,
                                     lightIcon: Images.light.userPlaceholder.src,
                                 })}
-                                onClick={() => router.push("/login")} // Перенаправляем на страницу входа
+                                onClick={() => router.push("/login")}
                             />
-                            : session?.user?.image ?
-                            <Image
-                                src={session?.user?.image || Images.dark.userPlaceholder.src} 
-                                width={40}
-                                height={40}
-                                alt="User profile"
-                                className="rounded-full"
-                            /> :
-                            <UserAvatar name={session?.user?.name || "user"} email={session?.user?.email as string} size="sm" />
+                            :
+                            // ✅ Приоритет: БД → Провайдер → Инициалы
+                            <UserAvatar 
+                                name={session?.user?.name || "user"} 
+                                email={session?.user?.email as string} 
+                                size="sm" 
+                                avatarVersion={avatarVersions?.[session?.user?.email as string]}
+                                fallbackImage={session?.user?.image} // Провайдер как fallback
+                            />
                         }
 
                         <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>

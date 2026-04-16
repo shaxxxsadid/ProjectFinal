@@ -92,22 +92,37 @@ class UsersService {
         }
     }
 
-    async updateUserAvatar(email: string, avatar: IAvatar) {
+    async updateUserAvatarById(_id: string, avatar: IAvatar) {
         try {
-            const updatedUser = await Users.findOneAndUpdate({ email }, { avatar: avatar }, { new: true });
+            const updatedUser = await Users.findByIdAndUpdate(
+                _id,
+                { avatar: avatar },
+                {
+                    returnDocument: 'after',  // ✅ Возвращает обновлённый документ
+                    runValidators: true       // ✅ Прогоняет валидацию схемы
+                }
+            );
             return updatedUser;
         } catch (error) {
-            logger.error(`Failed to update user avatar: ${error instanceof Error ? error.message : error}`);
+            logger.error(`Failed to update user avatar by id: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }
 
-    async updateUserAvatarById(_id: string, avatar: IAvatar) {
+    async updateUserAvatar(email: string, avatar: IAvatar) {
         try {
-            const updatedUser = await Users.findByIdAndUpdate(_id, { avatar: avatar }, { new: true });
+            const updatedUser = await Users.findOneAndUpdate(
+                { email },
+                { avatar: avatar },
+                {
+                    returnDocument: 'after',  // ✅ Вместо { new: true }
+                    runValidators: true,
+                    upsert: false
+                }
+            );
             return updatedUser;
         } catch (error) {
-            logger.error(`Failed to update user avatar by id: ${error instanceof Error ? error.message : error}`);
+            logger.error(`Failed to update user avatar by email: ${error instanceof Error ? error.message : error}`);
             throw error;
         }
     }

@@ -52,3 +52,15 @@ export async function DELETE(request: Request) {
     }
 }
 
+export async function PATCH(request: Request) {
+    const body = await request.json();
+    try {
+        await connectToDatabase();
+        const updatedUser = await usersService.updateUser(body._id, body);
+        if (!updatedUser) return Response.json({ success: false, error: 'User not found' }, { status: 404 });
+        return Response.json({ success: true, data: updatedUser });
+    } catch (error) {
+        logger.error(`Failed to connect to database: ${error instanceof Error ? error.message : error}`);
+        return Response.json({ success: false, error: 'Failed to connect to database' }, { status: 500 });
+    }
+}
