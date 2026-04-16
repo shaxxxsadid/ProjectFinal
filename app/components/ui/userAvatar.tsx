@@ -67,8 +67,6 @@ const UserAvatar = ({
     );
   }
 
-  // ✅ Если нигде нет - показываем инициалы (плейсхолдер)
-
   return (
     <div className={cn(
       'rounded-full flex items-center justify-center font-semibold border border-border/50',
