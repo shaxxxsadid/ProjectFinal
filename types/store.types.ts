@@ -8,6 +8,22 @@ export interface RoleShort {
     description?: string;
 }
 
+export interface AccountShort {
+    _id: string;
+    userId: string;
+    businessProfileId: string;
+    type: string;
+    providerId: {
+        _id: string;
+        id: string;
+        providerAccountId: string;
+    };
+    avatarUrl?: string;
+    createdAt: string;
+    updatedAt: string;
+
+}
+
 export interface BusinessProfileShort {
     _id: string;
     legalName: string;
@@ -32,6 +48,9 @@ export interface ProductShort {
     isHeatTreated: boolean;
     categoryId: string;
     avatar?: string;
+    price?: number;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface StokeShort {
@@ -65,8 +84,11 @@ export interface WarehouseShort {
 
 export interface ProviderShort {
     _id: string;
-    name: string;
+    publicId: string;
     displayName: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface PaginationState {
@@ -149,6 +171,8 @@ export interface UserStoreState {
 export interface RoleStoreState {
     roles: RoleShort[] | null;
     fetchRoles: () => Promise<void>;
+    selectedRole: RoleShort | null;
+    setSelectedRole: (role: RoleShort | null) => void;
     isLoading: boolean;
     error: string | null;
 }
@@ -156,6 +180,26 @@ export interface RoleStoreState {
 export interface BusinessProfileStoreState {
     businessProfiles: BusinessProfileShort[] | null;
     fetchBusinessProfiles: () => Promise<void>;
+    selectedBusinessProfile: BusinessProfileShort | null;
+    setSelectedBusinessProfile: (profile: BusinessProfileShort | null) => void;
+    isLoading: boolean;
+    error: string | null;
+}
+
+export interface AccountStoreState {
+    account: AccountShort[] | null;
+    fetchAccount: () => Promise<void>;
+    setSelectedAccount: (account: AccountShort | null) => void;
+    selectedAccount: AccountShort | null;
+    isLoading: boolean;
+    error: string | null;
+}
+
+export interface ProviderStoreState {
+    providers: ProviderShort[] | null;
+    fetchProviders: () => Promise<void>;
+    setSelectedProvider: (provider: ProviderShort | null) => void;
+    selectedProvider: ProviderShort | null;
     isLoading: boolean;
     error: string | null;
 }

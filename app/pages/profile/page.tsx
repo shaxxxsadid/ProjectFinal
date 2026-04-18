@@ -60,7 +60,7 @@ const SettingsItem = ({
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
-    const { user, uploadAvatar, avatarVersions } = useUserStore();
+    const { uploadAvatar, avatarVersions } = useUserStore();
     const router = useRouter();
     const [isLeaving, setIsLeaving] = useState(false);
 

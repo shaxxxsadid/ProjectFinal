@@ -245,9 +245,8 @@ export async function PUT(req: NextRequest) {
           mimeType = detectedMime;
         }
       }
-    } catch (e) {
-      // file-type не установлен — пропускаем проверку, используем заявленный MIME
-      console.warn("⚠️ file-type not available, skipping file type detection");
+    } catch (e) { 
+      console.warn("⚠️ file-type not available, skipping file type detection", e);
     }
 
     if (!VALID_MIME_TYPES.includes(mimeType)) {

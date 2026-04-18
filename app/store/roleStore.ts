@@ -8,6 +8,8 @@ export const useRoleStore = create<RoleStoreState>()(
             roles: null,
             isLoading: false,
             error: null,
+            selectedRole: null,
+            setSelectedRole: (role) => set({ selectedRole: role }),
 
             fetchRoles: async () => {
                 try {

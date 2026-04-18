@@ -20,7 +20,8 @@ export interface DataListState<T> {
 interface ProductsStore {
     productIsLoading: boolean;
     products: DataListState<ProductShort>;
-
+    selectedProduct: ProductShort | null;
+    setSelectedProduct: (product: ProductShort | null) => void;
     setProducts: (items: ProductShort[], total: number) => void;
     setProductsLoading: (loading: boolean) => void;
     setProductsError: (error: string | null) => void;
@@ -69,6 +70,8 @@ const initialProductsState: DataListState<ProductShort> = {
 export const useProductsStore = create<ProductsStore>((set, get) => ({
     productIsLoading: false,
     products: initialProductsState,
+    selectedProduct: null,
+    setSelectedProduct: (product) => set({ selectedProduct: product }),
 
     setProducts: (items, total) =>
         set((state) => ({

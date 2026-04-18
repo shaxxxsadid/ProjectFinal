@@ -75,7 +75,6 @@ export default function Header() {
     const { resolvedTheme } = useTheme();
     const { data: session, status } = useSession();
     const { avatarVersions } = useUserStore();
-    console.log(session, status);
     const socials = {
         github: {
             link: "https://github.com/shaxxxsadid",

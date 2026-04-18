@@ -10,8 +10,15 @@ import { Schema, model, models } from 'mongoose';
 */
 const accountsSchema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'Users', required: true },
-    type: { type: String, required: true },
-    providerId: { type: Schema.Types.ObjectId, ref: 'Provider', required: true },
+    type: {
+        type: String,
+        required: true,
+        enum: ['oauth', 'credential', 'credential & oauth']
+    },
+    providerId: [{
+        id: { type: Schema.Types.ObjectId, ref: 'Providers', required: true },
+        providerAccountId: { type: String }
+    }],
     avatar: { type: String }
 }, { timestamps: true });
 

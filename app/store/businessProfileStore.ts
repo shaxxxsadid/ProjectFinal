@@ -1,4 +1,4 @@
-import { BusinessProfileStoreState } from "@/types/store.types";
+import { BusinessProfileShort, BusinessProfileStoreState } from "@/types/store.types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -8,6 +8,10 @@ export const useBusinessProfileStore = create<BusinessProfileStoreState>()(
       businessProfiles: null,
       isLoading: false,
       error: null,
+      selectedBusinessProfile: null,
+
+      setSelectedBusinessProfile: (profile: BusinessProfileShort | null) =>
+        set({ selectedBusinessProfile: profile }),
       fetchBusinessProfiles: async () => {
         try {
           set({ isLoading: true, error: null });

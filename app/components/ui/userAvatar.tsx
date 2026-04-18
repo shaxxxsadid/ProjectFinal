@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/utils';
 import { fetchAvatar } from '@/app/lib/avatar';
+import Image from 'next/image';
+import { Images } from "@/public/images"
+import { useTheme } from 'next-themes';
+const subscribe = () => () => {};
 
 const UserAvatar = ({
   name,
@@ -20,11 +24,20 @@ const UserAvatar = ({
   const [avatar, setAvatar] = useState<string | null>(null);
 
   const sizeClasses = {
-    sm: 'w-11 h-11 text-sm',
+    sm: 'w-11 h-11 text-sm ',
     md: 'w-16 h-16 text-base',
     lg: 'w-20 h-20 text-lg',
     xl: 'w-24 h-24 text-xl'
   };
+  const { theme } = useTheme();
+  const resolvedTheme = (theme === 'light' || theme === 'dark') ? theme : 'light';
+  const mounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false   
+  );
+
+
 
   useEffect(() => {
     if (!email) return;
@@ -52,13 +65,12 @@ const UserAvatar = ({
     );
   }
 
-  // ✅ Если нет в БД, но есть у провайдера - показываем провайдера
   if (fallbackImage) {
     return (
       <img // eslint-disable-line
         src={fallbackImage}
         alt={name}
-        className={cn('rounded-full object-cover aspect-square', sizeClasses[size])}
+        className={cn('rounded-full', sizeClasses[size])}
         onError={e => {
           (e.target as HTMLImageElement).style.display = 'none';
           (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
@@ -67,13 +79,25 @@ const UserAvatar = ({
     );
   }
 
+  if (!mounted) {
+    return (
+      <div className={cn(
+        'rounded-full flex items-center justify-center font-semibold border border-border/50',
+        'text-foreground/80 bg-foreground/10',
+        sizeClasses[size]
+      )}>
+        {name.slice(0, 2).toUpperCase()}
+      </div>
+    );
+  }
+
   return (
-    <div className={cn(
-      'rounded-full flex items-center justify-center font-semibold border border-border/50',
-      sizeClasses[size],
-      'text-white'
-    )}>
-      {name.slice(0, 2).toUpperCase()}
+    <div className={cn('rounded-full flex items-center justify-center text-foreground', sizeClasses[size])}>
+      <Image
+        src={Images[resolvedTheme === 'dark' ? 'dark' : 'light'].userPlaceholder}
+        alt={name}
+        className={cn('rounded-full', sizeClasses[size])}
+      />
     </div>
   );
 };
