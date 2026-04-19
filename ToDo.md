@@ -1,21 +1,14 @@
 
-Admin Panel
+admin panel full crud
+DB CategoryProducts
+signIn link cred + provider
+registration page
 
-    3. create
+Stoke Product may be can be a have many warehouses. Need Array of ObjectId WareHouseId {
+    {
 
-    - BusinessProfile;
-    - Roles;
-    - Product;
-    - Providers;
-    - Warehouses;
-    - Stokes; 
-    - account
-    - users
-
-    4. Bug Пагинация не меняется при перемещении
-
-dashboard фикс гистограммы
-
-- есть прикол добавить PATCH для одного и того же email на oauth
-- Подумать на одновременное обновление данных
-- проверить delete  
+    },
+    {
+        
+    }
+}

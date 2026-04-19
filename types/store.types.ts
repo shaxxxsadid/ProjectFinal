@@ -57,9 +57,13 @@ export interface StokeShort {
     _id: string;
     batchNumber: string;
     productId: string;
+    warehouseId: string;
     quantity: number;
     available: number;
     reserved: number;
+    createdAt: string;
+    updatedAt: string;
+    expiryDate?: string;
 }
 
 export interface UserShort {
@@ -79,7 +83,15 @@ export interface WarehouseShort {
     _id: string;
     name: string;
     code: string;
+    type: string;
+    managerId: string;
+    phone: string;
+    email: string;
+    maxPallets: number;
+    totalAreaSqm: number;
     isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ProviderShort {
@@ -200,6 +212,24 @@ export interface ProviderStoreState {
     fetchProviders: () => Promise<void>;
     setSelectedProvider: (provider: ProviderShort | null) => void;
     selectedProvider: ProviderShort | null;
+    isLoading: boolean;
+    error: string | null;
+}
+
+export interface StokeStoreState {
+    stock: StokeShort[] | null;
+    fetchStock: () => Promise<void>;
+    setSelectedStock: (stock: StokeShort | null) => void;
+    selectedStock: StokeShort | null;
+    isLoading: boolean;
+    error: string | null;
+}
+
+export interface WarehouseStoreState {
+    warehouses: WarehouseShort[] | null;
+    fetchWarehouses: () => Promise<void>;
+    setSelectedWarehouse: (warehouse: WarehouseShort | null) => void;
+    selectedWarehouse: WarehouseShort | null;
     isLoading: boolean;
     error: string | null;
 }

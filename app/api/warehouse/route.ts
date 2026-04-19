@@ -6,7 +6,7 @@ export async function GET() {
     try {
         await connectToDatabase();
         const warehouses = await warehouseService.getAllWarehouses();
-        return Response.json({ success: true, warehouses: warehouses || [] });
+        return Response.json({ success: true, data: warehouses || [] });
     } catch (error) {
         logger.error(`Failed to connect to database: ${error instanceof Error ? error.message : error}`);
         return Response.json({ success: false, error: 'Failed to connect to database' }, { status: 500 });

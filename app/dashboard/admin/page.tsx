@@ -24,6 +24,13 @@ import { RoleDetails } from "./role/RoleDetails";
 import { ProductGrid } from "./products/ProductsGrid";
 import { useProductsStore } from "@/app/store/productStore";
 import { cn } from "@/lib/utils";
+import { ProductDetails } from "./products/ProductDetails";
+import { useStokeStore } from "@/app/store/stokeStore";
+import { StockTable } from "./stock/StockTable";
+import { StockDetails } from "./stock/StockDetails";
+import { useWarehouseStore } from "@/app/store/warehouseStore";
+import { WarehouseTable } from "./warehouse/WarehouseTable";
+import { WarehouseDetails } from "./warehouse/WarehouseDetails";
 
 const TAB_TITLES: Record<string, string> = {
   tab1: 'User Statistics',
@@ -43,6 +50,8 @@ export default function AdminDashboard() {
   const { account, fetchAccount } = useAccountStore();
   const { providers, fetchProviders } = useProviderStore();
   const { products, fetchProducts } = useProductsStore();
+  const { stock, fetchStock } = useStokeStore();
+  const { warehouses, fetchWarehouses } = useWarehouseStore();
   const [activeTab, setActiveTab] = useState('tab1');
   useEffect(() => {
     if (!user) fetchUser();
@@ -51,7 +60,9 @@ export default function AdminDashboard() {
     if (!account) fetchAccount();
     if (!providers) fetchProviders();
     if (products.items.length === 0) fetchProducts();
-  }, [fetchUser, fetchRoles, fetchBusinessProfiles, user, roles, businessProfiles, fetchAccount, account, providers, fetchProviders, products.items.length, fetchProducts]);
+    if (!stock) fetchStock(); 
+    if (!warehouses) fetchWarehouses();
+  }, [fetchUser, fetchRoles, fetchBusinessProfiles, user, roles, businessProfiles, fetchAccount, account, providers, fetchProviders, products.items.length, fetchProducts, fetchStock, stock, fetchWarehouses, warehouses]);
 
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground overflow-hidden flex items-center justify-center">
@@ -102,6 +113,8 @@ export default function AdminDashboard() {
               {activeTab === 'tab4' && <ProviderTable />}
               {activeTab === 'tab5' && <RoleTable />}
               {activeTab === 'tab6' && <ProductGrid />}
+              {activeTab === 'tab7' && <StockTable />}
+              {activeTab === 'tab8' && <WarehouseTable />}
               {activeTab !== 'tab1' && activeTab !== 'tab2' && activeTab !== 'tab3' && activeTab !== 'tab4' && activeTab !== 'tab5' && activeTab !== 'tab6' && <p className="text-muted-foreground text-center py-8">Coming soon</p>}
             </>
           )}
@@ -114,7 +127,9 @@ export default function AdminDashboard() {
           {activeTab === 'tab3' && <BusinessDetails />}
           {activeTab === 'tab4' && <ProviderDetails />}
           {activeTab === 'tab5' && <RoleDetails />}
-
+          {activeTab === 'tab6' && <ProductDetails />}
+          {activeTab === 'tab7' && <StockDetails />}
+          {activeTab === 'tab8' && <WarehouseDetails />}
 
         </div>
       </div>
