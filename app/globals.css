@@ -223,6 +223,14 @@
   transform-origin: left;
 }
 
+.smooth-image {
+  /* Форсирует плавное масштабирование в браузерах */
+  image-rendering: -webkit-optimize-contrast; /* Для четкости без артефактов */
+  image-rendering: auto; 
+  /* Трюк с аппаратным ускорением для сглаживания */
+  transform: translateZ(0); 
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

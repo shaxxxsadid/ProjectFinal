@@ -1,13 +1,13 @@
 'use client';
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ProductShort } from "@/types/store.types";
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
-import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 export const ProductDetails = () => {
-    const { selectedProduct, setSelectedProduct } = useProductsStore();
+    const { selectedProduct, setSelectedProduct, deleteProduct } = useProductsStore();
     const activeProduct: ProductShort | null = selectedProduct ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -98,7 +98,13 @@ export const ProductDetails = () => {
                         Edit
                     </button>
                     <button
-                        onClick={() => {}}
+                        onClick={() => {
+                            toast.promise(deleteProduct(activeProduct._id), {
+                                loading: 'Deleting product...',
+                                success: 'Product deleted successfully.',
+                                error: 'Failed to delete product.',
+                            })
+                        }}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

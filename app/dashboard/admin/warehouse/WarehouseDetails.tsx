@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { FaWarehouse } from "react-icons/fa";
 import { useMemo } from "react";
 import { useUserStore } from "@/app/store/userStore";
+import toast from "react-hot-toast";
 
 const TYPE_META: Record<string, { label: string; color: string }> = {
     main: { label: 'Main', color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
@@ -16,7 +17,7 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
 };
 
 export const WarehouseDetails = () => {
-    const { selectedWarehouse, setSelectedWarehouse } = useWarehouseStore();
+    const { selectedWarehouse, setSelectedWarehouse, deleteWarehouse } = useWarehouseStore();
     const activeWarehouse: WarehouseShort | null = selectedWarehouse ?? null;
     const { user: users } = useUserStore();
 
@@ -132,7 +133,10 @@ export const WarehouseDetails = () => {
                         </svg>
                         Edit
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200">
+                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
+                        onClick={() => {
+                            toast.promise(deleteWarehouse(activeWarehouse._id), { loading: 'Deleting warehouse...', success: 'Warehouse deleted!', error: 'Failed to delete warehouse' });
+                        }}>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>

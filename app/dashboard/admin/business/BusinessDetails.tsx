@@ -6,14 +6,13 @@ import UserAvatar from "@/app/components/ui/userAvatar";
 import { BusinessProfileShort } from "@/types/store.types";
 import Image from "next/image";
 import { useBusinessProfileStore } from "@/app/store/businessProfileStore";
+import { BusinessProfileCrudModal } from "@/app/components/ui/admin/modal/BusinessCrudModal";
 
 export const BusinessDetails = () => {
-    const { selectedBusinessProfile, setSelectedBusinessProfile } = useBusinessProfileStore();
+    const { selectedBusinessProfile, setSelectedBusinessProfile, deleteBusinessProfile, updateBusinessProfile } = useBusinessProfileStore();
 
     const activeBusinessProfile: BusinessProfileShort | null = selectedBusinessProfile ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const avatarInputRef = useRef<HTMLInputElement>(null);
-    const [avatarUploading, setAvatarUploading] = useState(false);
 
     if (!activeBusinessProfile) {
         return <div className="w-full h-90 rounded-3xl border border-transparent" />;
@@ -36,7 +35,7 @@ export const BusinessDetails = () => {
                         <button onClick={() => setSelectedBusinessProfile(null)} className="p-1 rounded-full hover:bg-foreground/10 transition-colors text-muted-foreground hover:text-foreground">✕</button>
                     </div>
 
-                    {/* Avatar & Toggle */}
+                    {/* Avatar*/}
                     <div className="flex flex-col items-center gap-3">
                         {/* ✅ position: relative для fill-изображения */}
                         <div className="relative w-24 h-24 rounded-full overflow-hidden">
@@ -61,22 +60,6 @@ export const BusinessDetails = () => {
                         <div className="text-center">
                             <h3 className="font-bold text-lg truncate">{activeBusinessProfile.legalName}</h3>
                             <p className="text-xs text-muted-foreground mt-1 truncate">{activeBusinessProfile.profileNumber}</p>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <span className={`text-xs font-medium ${activeBusinessProfile?.status ? 'text-emerald-500' : 'text-slate-500'}`}>
-                                {activeBusinessProfile?.status ? 'Active' : 'Inactive'}
-                            </span>
-                            <button
-                                onClick={() => { }}
-                                className={`relative w-11 h-6 rounded-full border transition-all duration-300 ${activeBusinessProfile?.status ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-foreground/5 border-foreground/20'}`}
-                            >
-                                <motion.span
-                                    layout
-                                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                    className={`absolute top-0.5 w-5 h-5 rounded-full ${activeBusinessProfile?.status ? 'bg-emerald-500 left-5' : 'bg-foreground/30 left-0.5'}`}
-                                />
-                            </button>
                         </div>
                     </div>
 
@@ -109,7 +92,16 @@ export const BusinessDetails = () => {
                             Edit
                         </button>
                         <button
-                            onClick={() => { }}
+                            onClick={() => {
+                                toast.promise(
+                                    deleteBusinessProfile(activeBusinessProfile._id),
+                                    {
+                                        loading: 'Deleting...',
+                                        success: 'Business profile deleted successfully',
+                                        error: 'Failed to delete business profile'
+                                    }
+                                )
+                            }}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -118,8 +110,26 @@ export const BusinessDetails = () => {
                             Delete
                         </button>
                     </div>
+
                 </motion.div>
+
             </AnimatePresence>
+            <BusinessProfileCrudModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                initialValues={activeBusinessProfile as BusinessProfileShort}
+                onSubmit={async (data) => {
+                    const result = await updateBusinessProfile(
+                        activeBusinessProfile?._id as string,
+                        data as BusinessProfileShort
+                    );
+                    if (result?.success) {
+                        setIsModalOpen(false); // закрываем только после успеха
+                    }
+                    return result ?? { success: false, error: 'Unknown error' };
+                }}
+                mode='edit'
+            />
         </>
     );
 };

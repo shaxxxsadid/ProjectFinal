@@ -25,7 +25,27 @@ export const useProviderStore = create<ProviderStoreState>()(persist(
                     isLoading: false
                 });
             }
-        }
+        },
+        deleteProvider: async (providerId: string) => {
+            try {
+                set({ isLoading: true, error: null });
+                const res = await fetch(`/api/providers`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ _id: providerId }),
+                });
+                if (!res.ok) throw new Error('Failed to delete provider');
+                const data = await res.json();
+                const providers = data.data ?? null;
+                set({ providers, isLoading: false });
+            } catch (error) {
+                set({
+                    providers: null,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    isLoading: false
+                });
+            }
+        },
 
     }),
     { name: 'providerStore' }

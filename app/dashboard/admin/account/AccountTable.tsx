@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pagination } from "@/app/components/ui/pagination";
 import UserAvatar from "@/app/components/ui/userAvatar";
@@ -11,7 +11,7 @@ import Image from "next/image";
 const ITEMS_PER_PAGE = 6;
 const ITEM_HEIGHT = 52;
 
-export const AccountTable = () => {
+export const AccountTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
   const { account, selectedAccount, setSelectedAccount } = useAccountStore();
   const { user, avatarVersions } = useUserStore();
   const activeAccount: AccountShort | null = selectedAccount ?? null;
@@ -22,25 +22,37 @@ export const AccountTable = () => {
     return new Map(user.map((u) => [u._id, u]));
   }, [user]);
 
-  const totalPages = useMemo(
-    () => Math.ceil((account?.length || 0) / ITEMS_PER_PAGE),
-    [account]
-  );
-
-  const currentUsers = useMemo(() => {
-    if (!account) return [];
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return account.slice(start, start + ITEMS_PER_PAGE);
-  }, [account, currentPage]);
-
-
-  const getUserData = (userId: string) => {
+  const getUserData = useCallback((userId: string) => {
     const u = userMap.get(userId);
     if (!u) return { name: 'Unknown', email: '', isActive: false };
-
     const name = u.username || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Unknown';
     return { name, email: u.email || '', isActive: u.isActive };
-  };
+  }, [userMap]);
+
+  const filteredAccounts = useMemo(() => {
+    if (!account) return [];
+    if (!searchQuery.trim()) return account;
+    const q = searchQuery.toLowerCase();
+    return account.filter(a => {
+      const userData = getUserData(a.userId);
+      return (
+        userData.name.toLowerCase().includes(q) ||
+        userData.email.toLowerCase().includes(q)
+      );
+    });
+  }, [account, searchQuery, getUserData]);
+
+  const totalPages = useMemo(
+    () => Math.ceil((filteredAccounts.length || 0) / ITEMS_PER_PAGE),
+    [filteredAccounts]
+  );
+
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
+
+  const currentAccounts = useMemo(() => {
+    const start = (safePage - 1) * ITEMS_PER_PAGE;
+    return filteredAccounts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAccounts, safePage]);
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -48,7 +60,7 @@ export const AccountTable = () => {
         className="flex flex-col relative"
         style={{ height: `${ITEM_HEIGHT * ITEMS_PER_PAGE + (ITEMS_PER_PAGE - 1) * 8}px` }}
       >
-        {currentUsers.length > 0 ? (
+        {currentAccounts.length > 0 ? (
           <AnimatePresence mode="wait">
             <motion.div
               key={`page-${currentPage}`}
@@ -58,7 +70,7 @@ export const AccountTable = () => {
               transition={{ duration: 0.2 }}
               className="flex flex-col gap-2 absolute inset-0"
             >
-              {currentUsers.map((acc) => {
+              {currentAccounts.map((acc) => {
                 const userData = getUserData(acc.userId);
                 const avatarKey = `${acc.userId}-${avatarVersions?.[acc.userId] || 0}`;
 
@@ -121,7 +133,7 @@ export const AccountTable = () => {
               })}
 
               {/* Пустые блоки для сохранения высоты */}
-              {Array.from({ length: ITEMS_PER_PAGE - currentUsers.length }).map((_, i) => (
+              {Array.from({ length: ITEMS_PER_PAGE - currentAccounts.length }).map((_, i) => (
                 <div key={`empty-${i}`} className="shrink-0 invisible" style={{ height: `${ITEM_HEIGHT}px` }} aria-hidden="true" />
               ))}
             </motion.div>
@@ -133,13 +145,11 @@ export const AccountTable = () => {
         )}
       </div>
 
-      {
-        user && user.length > 0 && (
-          <div className="flex justify-center pt-4 border-t border-foreground/10">
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
-          </div>
-        )
-      }
+      {filteredAccounts.length > 0 && (
+        <div className="flex justify-center pt-4 border-t border-foreground/10">
+          <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        </div>
+      )}
     </div >
   );
 };

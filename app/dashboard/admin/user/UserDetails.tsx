@@ -59,9 +59,9 @@ export const UserDetails = () => {
 
           {/* Avatar & Toggle */}
           <div className="flex flex-col items-center gap-3">
-            <div className="relative group">
+            <div className="relative  group">
               <UserAvatar 
-                size="lg" 
+                size="xl" 
                 email={activeUser.email} 
                 name={activeUser.username ?? `${activeUser.firstName} ${activeUser.lastName}`} 
                 avatarVersion={avatarVersions?.[activeUser.email] ?? avatarVersions?.[activeUser._id]} 

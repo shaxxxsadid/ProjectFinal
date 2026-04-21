@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RoleShort } from "@/types/store.types";
 import { useRoleStore } from "@/app/store/roleStore";
+import toast from "react-hot-toast";
 
 const ROLE_COLORS = [
     "bg-violet-500/10 text-violet-400 border-violet-500/20",
@@ -21,7 +22,7 @@ const PRIORITY_META: Record<number, { label: string; color: string }> = {
 };
 
 export const RoleDetails = () => {
-    const { selectedRole, setSelectedRole } = useRoleStore();
+    const { selectedRole, setSelectedRole, deleteRole } = useRoleStore();
     const activeRole: RoleShort | null = selectedRole ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -94,7 +95,13 @@ export const RoleDetails = () => {
                         Edit
                     </button>
                     <button
-                        onClick={() => { }}
+                        onClick={() => {
+                            toast.promise(deleteRole(activeRole._id), {
+                                loading: 'Deleting role...',
+                                success: 'Role deleted successfully.',
+                                error: 'Failed to delete role.',
+                            })
+                         }}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

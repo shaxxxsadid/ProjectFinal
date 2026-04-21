@@ -7,6 +7,7 @@ import { useStokeStore } from "@/app/store/stokeStore";
 import { cn } from "@/lib/utils";
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
+import { useWarehouseStore } from "@/app/store/warehouseStore";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -27,7 +28,7 @@ const getAvailabilityMeta = (available: number, quantity: number) => {
     return { label: 'Reserved', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' };
 };
 
-export const StockTable = () => {
+export const StockTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
     const { stock, selectedStock, setSelectedStock } = useStokeStore();
     const { products } = useProductsStore();
 
@@ -42,19 +43,27 @@ export const StockTable = () => {
         return { names, ids };
     }, [stock, products.items]);
 
+
     const activeStock: StokeShort | null = selectedStock ?? null;
     const [currentPage, setCurrentPage] = useState(1);
 
-    const totalPages = useMemo(
-        () => Math.ceil((stock?.length || 0) / ITEMS_PER_PAGE),
-        [stock]
-    );
-
-    const currentStock = useMemo(() => {
+    const filteredStock = useMemo(() => {
         if (!stock) return [];
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return stock.slice(start, start + ITEMS_PER_PAGE);
-    }, [stock, currentPage]);
+        return stock.filter((item) =>
+            item.batchNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            linkedProducts.names[item.productId].toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [stock, searchQuery, linkedProducts.names]);
+
+    const totalPages = useMemo(
+        () => Math.ceil((filteredStock.length || 0) / ITEMS_PER_PAGE),
+        [filteredStock]
+    );
+    const safePage = Math.min(currentPage, Math.max(1, totalPages));
+    const currentStock = useMemo(() => {
+        if (!filteredStock) return [];
+        const start = (safePage - 1) * ITEMS_PER_PAGE;
+        return filteredStock.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredStock, safePage]);
 
     return (
         <div className="w-full justify-between flex flex-col min-h-114 gap-2">
@@ -88,7 +97,7 @@ export const StockTable = () => {
                                             productId={item.productId}
                                             size="sm"
                                         />
-                                    ):(
+                                    ) : (
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 ${color}`}>
                                             {item.batchNumber.slice(0, 1).toUpperCase()}
                                         </div>
@@ -97,44 +106,44 @@ export const StockTable = () => {
 
 
                                 <div className="flex flex-col min-w-0 flex-1">
-                            <span className="font-medium truncate text-sm">
-                                {linkedProducts.names[item.productId] ?? 'Unknown product'}
-                            </span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="font-mono text-[11px] text-foreground/40 truncate">
-                                    {item.batchNumber}
-                                </span>
-                                {item.reserved > 0 && (
-                                    <span className="text-[10px] text-rose-400/70 shrink-0">
-                                        · {item.reserved} reserved
+                                    <span className="font-medium truncate text-sm">
+                                        {linkedProducts.names[item.productId] ?? 'Unknown product'}
                                     </span>
-                                )}
-                            </div>
-                        </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="font-mono text-[11px] text-foreground/40 truncate">
+                                            {item.batchNumber}
+                                        </span>
+                                        {item.reserved > 0 && (
+                                            <span className="text-[10px] text-rose-400/70 shrink-0">
+                                                · {item.reserved} reserved
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
 
-                                {/* Статус доступности */ }
-                        < div className = {
-                            cn(
-                                    'shrink-0 text-[11px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded-full border',
-                            availability.color
-                                )}>
-                    {availability.label}
-            </div>
-        </motion.div>
-    );
-})}
+                                {/* Статус доступности */}
+                                < div className={
+                                    cn(
+                                        'shrink-0 text-[11px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded-full border',
+                                        availability.color
+                                    )}>
+                                    {availability.label}
+                                </div>
+                            </motion.div>
+                        );
+                    })}
                 </AnimatePresence >
             </div >
 
-    { totalPages > 1 && (
-        <div className="flex justify-center pt-4 border-t border-foreground/10">
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-            />
-        </div>
-    )}
+            {totalPages > 1 && (
+                <div className="flex justify-center pt-4 border-t border-foreground/10">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
+            )}
         </div >
     );
 };

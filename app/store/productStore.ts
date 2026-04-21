@@ -28,6 +28,7 @@ interface ProductsStore {
     searchProducts: (query: string) => void;
     setProductPage: (page: number) => void;
     fetchProducts: () => Promise<void>;
+    deleteProduct: (_id: string) => Promise<void>; // ← добавь
 }
 
 // 🔹 Вспомогательная функция фильтрации (простая, без зависимостей)
@@ -150,6 +151,48 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
         } catch (err) {
             console.error('Failed to fetch products:', err);
             setProductsError(err instanceof Error ? err.message : 'Ошибка загрузки товаров');
+        } finally {
+            setProductsLoading(false);
+        }
+    },
+    deleteProduct: async (_id: string) => {
+        const { setProductsLoading, setProductsError, fetchProducts } = get();
+        try {
+            setProductsLoading(true);
+            setProductsError(null);
+
+            const res = await fetch('/api/products', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ _id }),
+            });
+
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                throw new Error(result.error || 'Failed to delete product');
+            }
+
+            // Убираем из локального стейта сразу — не ждём рефетча
+            set((state) => {
+                const items = state.products.items.filter(p => p._id !== _id);
+                const filteredItems = state.products.filteredItems.filter(p => p._id !== _id);
+                const total = items.length;
+                return {
+                    selectedProduct: state.selectedProduct?._id === _id ? null : state.selectedProduct,
+                    products: {
+                        ...state.products,
+                        items,
+                        filteredItems,
+                        pagination: {
+                            ...state.products.pagination,
+                            total,
+                            totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+                        },
+                    },
+                };
+            });
+        } catch (err) {
+            setProductsError(err instanceof Error ? err.message : 'Ошибка удаления товара');
         } finally {
             setProductsLoading(false);
         }

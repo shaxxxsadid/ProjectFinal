@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import Image from 'next/image';
+import { useDebounce } from '@/app/hooks/debounce';
 
 export interface FieldOption {
   value: string;
@@ -14,12 +16,13 @@ export interface FieldOption {
 export interface FieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select';
+  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'image-url';
   required?: boolean;
   autoComplete?: string;
   initialValue?: string;
   placeholder?: string;
   options?: FieldOption[];
+  meta?: Record<string, string>; // доп данные, например fallbackName для аватара
 }
 
 export interface FormModalProps {
@@ -47,7 +50,6 @@ const PasswordField = ({
         {label}
         {!required && <span className="text-muted-foreground font-normal"> (optional)</span>}
       </label>
-      
       <div className="relative">
         <input
           type={show ? 'text' : 'password'}
@@ -63,10 +65,9 @@ const PasswordField = ({
             "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent",
             "transition-all duration-200",
             "placeholder:text-muted-foreground/50",
-            "pr-12" // space for eye icon
+            "pr-12"
           )}
         />
-        
         <button
           type="button"
           onClick={onToggle}
@@ -74,11 +75,7 @@ const PasswordField = ({
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/80"
           aria-label={show ? "Hide password" : "Show password"}
         >
-          {show ? (
-            <FaEyeSlash className="w-4 h-4" />
-          ) : (
-            <FaEye className="w-4 h-4" />
-          )}
+          {show ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
         </button>
       </div>
     </div>
@@ -96,19 +93,14 @@ const FloatingField = ({
 
   return (
     <div className="relative pt-6 pb-2">
-      <label
-        className={cn(
-          "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
-          "text-sm font-medium",
-          lifted 
-            ? "top-2 text-xs text-primary -translate-y-1" 
-            : "top-3.5 text-muted-foreground"
-        )}
-      >
+      <label className={cn(
+        "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+        "text-sm font-medium",
+        lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+      )}>
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
       </label>
-
       <input
         type={type}
         value={value}
@@ -130,10 +122,106 @@ const FloatingField = ({
   );
 };
 
+const ImageUrlField = ({
+  label, value, onChange, required, placeholder, fallbackName
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  required?: boolean; placeholder?: string; fallbackName?: string;
+}) => {
+  const [focused, setFocused] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const lifted = focused || value.length > 0;
+
+  const debouncedValue = useDebounce(value, 500);
+
+  const isValidUrl = (str: string): boolean => {
+    if (!str.trim()) return false;
+    try {
+      const url = new URL(str);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleChange = (v: string) => {
+    setImgError(false);
+    onChange(v);
+  };
+
+  const showImage = debouncedValue.trim().length > 0 && !imgError && isValidUrl(debouncedValue);
+
+  const initials = fallbackName
+    ? fallbackName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : '?';
+
+  return (
+    <div className="flex items-center gap-4">
+      {/* Живой превью — обновляется только по debouncedValue */}
+      <div className="shrink-0">
+        <div className="relative w-25 h-25 rounded-full shrink-0 overflow-hidden border-2 border-border/50">
+          {showImage ? (
+            <Image
+              src={debouncedValue}
+              alt="Avatar preview"
+              fill
+              sizes="100px"
+              className="rounded-full object-cover shrink-0" 
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-muted-foreground">
+              {initials}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Поле ввода — реагирует мгновенно */}
+      <div className="flex-1 relative pt-6 pb-2">
+        <label className={cn(
+          "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+          "text-sm font-medium",
+          lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+        )}>
+          {label}
+          {required && <span className="text-destructive ml-0.5">*</span>}
+        </label>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          className={cn(
+            "w-full px-3 py-3 bg-muted/30 rounded-lg",
+            "text-sm text-foreground outline-none border-2",
+            "border-transparent focus:border-primary/50",
+            "transition-all duration-200",
+            "placeholder:text-muted-foreground/50"
+          )}
+        />
+
+        {/* Подсказка если введён невалидный URL — показываем по debouncedValue */}
+        {value.trim().length > 0 && debouncedValue.trim().length > 0 && !isValidUrl(debouncedValue) && (
+          <p className="text-xs text-amber-500 mt-1 ml-1">
+            Enter a valid URL (https://...)
+          </p>
+        )}
+
+        {imgError && isValidUrl(debouncedValue) && (
+          <p className="text-xs text-destructive mt-1 ml-1">Failed to load image</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const SelectField = ({
   label, value, onChange, options, required
 }: {
-  label: string; value: string; onChange: (v: string) => void; 
+  label: string; value: string; onChange: (v: string) => void;
   options: FieldOption[]; required?: boolean;
 }) => {
   const [focused, setFocused] = useState(false);
@@ -141,19 +229,14 @@ const SelectField = ({
 
   return (
     <div className="relative pt-6 pb-2">
-      <label
-        className={cn(
-          "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
-          "text-sm font-medium",
-          lifted 
-            ? "top-2 text-xs text-primary -translate-y-1" 
-            : "top-3.5 text-muted-foreground"
-        )}
-      >
+      <label className={cn(
+        "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+        "text-sm font-medium",
+        lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+      )}>
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
       </label>
-
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -176,7 +259,6 @@ const SelectField = ({
           </option>
         ))}
       </select>
-      
       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
         <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -197,19 +279,14 @@ const TextareaField = ({
 
   return (
     <div className="relative pt-6 pb-2">
-      <label
-        className={cn(
-          "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
-          "text-sm font-medium",
-          lifted 
-            ? "top-2 text-xs text-primary -translate-y-1" 
-            : "top-3.5 text-muted-foreground"
-        )}
-      >
+      <label className={cn(
+        "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+        "text-sm font-medium",
+        lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+      )}>
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
       </label>
-
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -279,7 +356,7 @@ export const FormModal = ({
       if (!result.success) throw new Error(result.error || 'Ошибка сервера');
       setSuccess(mode === 'create' ? 'Создано успешно' : 'Изменения сохранены');
       setTimeout(onClose, 1500);
-    } catch (err: any) {// eslint-disable-line
+    } catch (err: any) { // eslint-disable-line
       setError(err.message);
     } finally {
       setLoading(false);
@@ -298,7 +375,6 @@ export const FormModal = ({
             onClick={onClose}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -359,7 +435,16 @@ export const FormModal = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
                   >
-                    {field.type === 'select' ? (
+                    {field.type === 'image-url' ? (
+                      <ImageUrlField
+                        label={field.label}
+                        value={formData[field.name] || ''}
+                        onChange={(v) => setFormData(prev => ({ ...prev, [field.name]: v }))}
+                        required={field.required}
+                        placeholder={field.placeholder}
+                        fallbackName={field.meta?.fallbackName}
+                      />
+                    ) : field.type === 'select' ? (
                       <SelectField
                         label={field.label}
                         value={formData[field.name] || ''}
@@ -459,7 +544,7 @@ export const FormModal = ({
                     "hover:bg-primary/90 active:scale-[0.98]",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
                     "transition-all duration-200",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer "
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
                   )}
                 >
                   <span className="flex items-center justify-center gap-2">

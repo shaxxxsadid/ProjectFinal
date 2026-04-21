@@ -23,6 +23,22 @@ export const useRoleStore = create<RoleStoreState>()(
                     set({ roles: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
                 }
             },
+            deleteRole: async (roleId: string) => {
+                try {
+                    set({ isLoading: true, error: null });
+                    const res = await fetch(`/api/roles`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ _id: roleId }),
+                    });
+                    if (!res.ok) throw new Error('Failed to delete role');
+                    const data = await res.json();
+                    const roles = data.data ?? null;
+                    set({ roles, isLoading: false });
+                } catch (error) {
+                    set({ roles: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
+                }
+            },
         }),
         {
             name: 'role-storage',

@@ -8,7 +8,7 @@ import { useProviderStore } from "@/app/store/providerStore";
 import { PROVIDER_META } from "@/app/components/providerMeta";
 
 export const ProviderDetails = () => {
-    const { providers, selectedProvider, setSelectedProvider } = useProviderStore();
+    const { selectedProvider, setSelectedProvider, deleteProvider } = useProviderStore();
     const activeProvider: ProviderShort | null = selectedProvider ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +99,15 @@ export const ProviderDetails = () => {
                             Edit
                         </button>
                         <button
-                            onClick={() => { }}
+                            onClick={() => { 
+                                if (window.confirm('Are you sure you want to delete this provider?')) {
+                                    toast.promise(deleteProvider(activeProvider._id), {
+                                        loading: 'Deleting provider...',
+                                        success: 'Provider deleted successfully!',
+                                        error: 'Failed to delete provider',
+                                    })
+                                }
+                             }}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

@@ -1,7 +1,7 @@
 'use client';
 import { BackgroundPaths } from "@/app/components/ui/paths";
 import { MotionEffect } from "@/app/components/ui/motion-highlight";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Tabs } from "@/app/components/ui/tabs";
 import { FaBasketShopping, FaShareNodes, FaUser } from "react-icons/fa6";
 import { FaBox, FaBusinessTime, FaDolly, FaLink, FaUserLock } from "react-icons/fa";
@@ -31,6 +31,8 @@ import { StockDetails } from "./stock/StockDetails";
 import { useWarehouseStore } from "@/app/store/warehouseStore";
 import { WarehouseTable } from "./warehouse/WarehouseTable";
 import { WarehouseDetails } from "./warehouse/WarehouseDetails";
+import { useDebounce } from "@/app/hooks/debounce";
+import { AnimatePresence, motion } from "framer-motion";
 
 const TAB_TITLES: Record<string, string> = {
   tab1: 'User Statistics',
@@ -43,16 +45,29 @@ const TAB_TITLES: Record<string, string> = {
   tab8: 'Warehouse Statistics',
 };
 
+const TAB_SEARCH_PLACEHOLDER: Record<string, string> = {
+  tab1: 'Search users...',
+  tab2: 'Search accounts...',
+  tab3: 'Search business profiles...',
+  tab4: 'Search providers...',
+  tab5: 'Search roles...',
+  tab6: 'Search products...',
+  tab7: 'Search stock...',
+  tab8: 'Search warehouses...',
+};
+
 export default function AdminDashboard() {
   const { user, fetchUser, isLoading, error } = useUserStore();
   const { roles, fetchRoles } = useRoleStore();
   const { businessProfiles, fetchBusinessProfiles } = useBusinessProfileStore();
   const { account, fetchAccount } = useAccountStore();
   const { providers, fetchProviders } = useProviderStore();
-  const { products, fetchProducts } = useProductsStore();
+  const { products, fetchProducts, searchProducts } = useProductsStore();
   const { stock, fetchStock } = useStokeStore();
   const { warehouses, fetchWarehouses } = useWarehouseStore();
   const [activeTab, setActiveTab] = useState('tab1');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceSearchQuery = useDebounce(searchQuery, 500);
   useEffect(() => {
     if (!user) fetchUser();
     if (!roles) fetchRoles();
@@ -60,9 +75,51 @@ export default function AdminDashboard() {
     if (!account) fetchAccount();
     if (!providers) fetchProviders();
     if (products.items.length === 0) fetchProducts();
-    if (!stock) fetchStock(); 
+    if (!stock) fetchStock();
     if (!warehouses) fetchWarehouses();
   }, [fetchUser, fetchRoles, fetchBusinessProfiles, user, roles, businessProfiles, fetchAccount, account, providers, fetchProviders, products.items.length, fetchProducts, fetchStock, stock, fetchWarehouses, warehouses]);
+
+  // Сбрасываем поиск при смене таба
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+    if (activeTab === 'tab6') searchProducts('');
+  }, [activeTab, searchProducts]);
+
+  // Поиск для продуктов через стор, для остальных — локально
+  const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (activeTab === 'tab6') searchProducts(q);
+  }, [activeTab, searchProducts]);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'tab1': return <UserTable searchQuery={debounceSearchQuery} />;
+      case 'tab2': return <AccountTable searchQuery={debounceSearchQuery} />;
+      case 'tab3': return <BusinessTable searchQuery={debounceSearchQuery} />;
+      case 'tab4': return <ProviderTable searchQuery={debounceSearchQuery} />;
+      case 'tab5': return <RoleTable />;
+      case 'tab6': return <ProductGrid />;
+      case 'tab7': return <StockTable searchQuery={debounceSearchQuery} />;
+      case 'tab8': return <WarehouseTable searchQuery={debounceSearchQuery} />;
+      default: return <p className="text-muted-foreground text-center py-8">Coming soon</p>;
+    }
+  };
+
+  const renderDetails = () => {
+    switch (activeTab) {
+      case 'tab1': return <UserDetails />;
+      case 'tab2': return <AccountDetails />;
+      case 'tab3': return <BusinessDetails />;
+      case 'tab4': return <ProviderDetails />;
+      case 'tab5': return <RoleDetails />;
+      case 'tab6': return <ProductDetails />;
+      case 'tab7': return <StockDetails />;
+      case 'tab8': return <WarehouseDetails />;
+      default: return null;
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground overflow-hidden flex items-center justify-center">
@@ -88,7 +145,7 @@ export default function AdminDashboard() {
                 ]}
                 textSize="lg"
                 activeTab={activeTab}
-                onTabChange={(tab) => setActiveTab(tab)}
+                onTabChange={handleTabChange}
               />
             </MotionEffect>
           </div>
@@ -96,41 +153,77 @@ export default function AdminDashboard() {
 
         {/* 2. ЦЕНТРАЛЬНАЯ КОЛОНКА */}
         <div className={cn(
-          "bg-background border border-foreground/20 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl min-w-0",
+          "bg-background border border-foreground/20 backdrop-blur-2xl rounded-3xl p-6  shadow-2xl min-w-0",
           activeTab === 'tab6' ? "h-[80%]" : "h-[70%]"
         )}>
-          <h1 className="text-center text-3xl md:text-4xl font-bold mb-4 truncate">{TAB_TITLES[activeTab]}</h1>
-          <div className="flex justify-center my-6"><HorizontalWrapper height={2} width="50%" expand /></div>
+          <h1 className="text-center text-3xl md:text-4xl font-bold mb-4 truncate">
+            {TAB_TITLES[activeTab]}
+          </h1>
+          <div className="flex justify-center my-4">
+            <HorizontalWrapper height={2} width="50%" expand />
+          </div>
 
+          {/* Поиск */}
+          {
+            activeTab === 'tab6' || activeTab === 'tab5' ? (
+              <></>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex mb-3 items-center gap-2 px-4 py-2.5 rounded-2xl border bg-foreground/5 border-foreground/10 focus-within:bg-foreground/8 focus-within:border-foreground/25 transition-all duration-200"
+              >
+                <svg
+                  className="w-4 h-4 text-foreground/30 shrink-0 self-center"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  placeholder={TAB_SEARCH_PLACEHOLDER[activeTab]}
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-foreground/25 text-foreground leading-none py-0"
+                />
+                <AnimatePresence>
+                  {searchQuery && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.7 }}
+                      transition={{ duration: 0.15 }}
+                      onClick={() => { setSearchQuery(''); if (activeTab === 'tab6') searchProducts(''); }}
+                      className="w-5 h-5 rounded-full bg-foreground/15 hover:bg-foreground/25 flex items-center justify-center transition-colors shrink-0 self-center cursor-pointer"
+                    >
+                      <svg
+                        className="w-2.5 h-2.5 text-foreground/50"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )
+          }
           {isLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>}
           {error && <p className="text-sm text-destructive text-center py-8">{error}</p>}
 
-          {!isLoading && !error && (
-            <>
-              {activeTab === 'tab1' && <UserTable />}
-              {activeTab === 'tab2' && <AccountTable />}
-              {activeTab === 'tab3' && <BusinessTable />}
-              {activeTab === 'tab4' && <ProviderTable />}
-              {activeTab === 'tab5' && <RoleTable />}
-              {activeTab === 'tab6' && <ProductGrid />}
-              {activeTab === 'tab7' && <StockTable />}
-              {activeTab === 'tab8' && <WarehouseTable />}
-              {activeTab !== 'tab1' && activeTab !== 'tab2' && activeTab !== 'tab3' && activeTab !== 'tab4' && activeTab !== 'tab5' && activeTab !== 'tab6' && <p className="text-muted-foreground text-center py-8">Coming soon</p>}
-            </>
-          )}
+          {!isLoading && !error && renderContent()}
         </div>
 
-        {/* 3. ПРАВАЯ КОЛОНКА (Всегда смонтирована, резервирует высоту) */}
+        {/* 3. ПРАВАЯ КОЛОНКА */}
         <div className="min-h-90 w-72 shrink-0">
-          {activeTab === 'tab1' && <UserDetails />}
-          {activeTab === 'tab2' && <AccountDetails />}
-          {activeTab === 'tab3' && <BusinessDetails />}
-          {activeTab === 'tab4' && <ProviderDetails />}
-          {activeTab === 'tab5' && <RoleDetails />}
-          {activeTab === 'tab6' && <ProductDetails />}
-          {activeTab === 'tab7' && <StockDetails />}
-          {activeTab === 'tab8' && <WarehouseDetails />}
-
+          {renderDetails()}
         </div>
       </div>
     </div>

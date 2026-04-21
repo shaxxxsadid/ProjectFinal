@@ -26,21 +26,34 @@ const ICON_COLORS = [
     "bg-teal-500/10 text-teal-400 border-teal-500/20",
 ];
 
-export const WarehouseTable = () => {
+export const WarehouseTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
     const { warehouses, selectedWarehouse, setSelectedWarehouse } = useWarehouseStore();
     const activeWarehouse: WarehouseShort | null = selectedWarehouse ?? null;
     const [currentPage, setCurrentPage] = useState(1);
+
+    const filteredWarehouses = useMemo(() => {
+        if (!warehouses) return [];
+        return warehouses.filter((warehouse) => 
+            warehouse.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            warehouse.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            warehouse.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            warehouse.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            warehouse.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            warehouse.totalAreaSqm.toString().includes(searchQuery)
+        );
+    }, [warehouses, searchQuery]);
 
     const totalPages = useMemo(
         () => Math.ceil((warehouses?.length || 0) / ITEMS_PER_PAGE),
         [warehouses]
     );
+    const safePage = Math.min(currentPage, Math.max(1, totalPages));
 
     const currentWarehouses = useMemo(() => {
-        if (!warehouses) return [];
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return warehouses.slice(start, start + ITEMS_PER_PAGE);
-    }, [warehouses, currentPage]);
+        if (!filteredWarehouses) return [];
+        const start = (safePage - 1) * ITEMS_PER_PAGE;
+        return filteredWarehouses.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredWarehouses, safePage]);
 
     return (
         <div className="w-full justify-between flex flex-col min-h-114 gap-2">

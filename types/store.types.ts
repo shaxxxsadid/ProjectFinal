@@ -30,7 +30,7 @@ export interface BusinessProfileShort {
     profileNumber: string;
     type: string;
     taxId: string;
-    avatar?: string | null; 
+    avatar?: string | null;
     status: 'active' | 'inactive';
     createdAt: string;
     updatedAt: string;
@@ -183,6 +183,7 @@ export interface UserStoreState {
 export interface RoleStoreState {
     roles: RoleShort[] | null;
     fetchRoles: () => Promise<void>;
+    deleteRole: (roleId: string) => Promise<void>;
     selectedRole: RoleShort | null;
     setSelectedRole: (role: RoleShort | null) => void;
     isLoading: boolean;
@@ -192,6 +193,13 @@ export interface RoleStoreState {
 export interface BusinessProfileStoreState {
     businessProfiles: BusinessProfileShort[] | null;
     fetchBusinessProfiles: () => Promise<void>;
+    // Интерфейс
+    updateBusinessProfile: (
+        businessProfileId: string,
+        data: Omit<BusinessProfileShort, '_id' | 'createdAt' | 'updatedAt'>
+    ) => Promise<{ success: boolean; data?: BusinessProfileShort; error?: string }>;
+    createBusinessProfile: (data: Omit<BusinessProfileShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    deleteBusinessProfile: (businessProfileId: string) => Promise<void>;
     selectedBusinessProfile: BusinessProfileShort | null;
     setSelectedBusinessProfile: (profile: BusinessProfileShort | null) => void;
     isLoading: boolean;
@@ -201,6 +209,7 @@ export interface BusinessProfileStoreState {
 export interface AccountStoreState {
     account: AccountShort[] | null;
     fetchAccount: () => Promise<void>;
+    deleteAccount: (accountId: string) => Promise<void>;
     setSelectedAccount: (account: AccountShort | null) => void;
     selectedAccount: AccountShort | null;
     isLoading: boolean;
@@ -210,6 +219,7 @@ export interface AccountStoreState {
 export interface ProviderStoreState {
     providers: ProviderShort[] | null;
     fetchProviders: () => Promise<void>;
+    deleteProvider: (providerId: string) => Promise<void>;
     setSelectedProvider: (provider: ProviderShort | null) => void;
     selectedProvider: ProviderShort | null;
     isLoading: boolean;
@@ -219,6 +229,7 @@ export interface ProviderStoreState {
 export interface StokeStoreState {
     stock: StokeShort[] | null;
     fetchStock: () => Promise<void>;
+    deleteStock: (stockId: string) => Promise<void>;
     setSelectedStock: (stock: StokeShort | null) => void;
     selectedStock: StokeShort | null;
     isLoading: boolean;
@@ -228,6 +239,7 @@ export interface StokeStoreState {
 export interface WarehouseStoreState {
     warehouses: WarehouseShort[] | null;
     fetchWarehouses: () => Promise<void>;
+    deleteWarehouse: (warehouseId: string) => Promise<void>;
     setSelectedWarehouse: (warehouse: WarehouseShort | null) => void;
     selectedWarehouse: WarehouseShort | null;
     isLoading: boolean;

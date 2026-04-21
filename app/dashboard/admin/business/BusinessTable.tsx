@@ -9,21 +9,32 @@ import { useBusinessProfileStore } from "@/app/store/businessProfileStore";
 
 const ITEMS_PER_PAGE = 6;
 
-export const BusinessTable = () => {
+export const BusinessTable = ({ searchQuery = "" }: { searchQuery?: string }) => {
     const { businessProfiles, setSelectedBusinessProfile, selectedBusinessProfile } = useBusinessProfileStore();
     const activeBusinessProfile: BusinessProfileShort | null = selectedBusinessProfile ?? null;
     const [currentPage, setCurrentPage] = useState(1);
+
+    const filteredBusinessProfiles = useMemo(() => {
+        if (!businessProfiles) return [];
+        return businessProfiles.filter((profile) =>
+            profile.legalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            profile.taxId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            profile.profileNumber.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [businessProfiles, searchQuery]);
 
     const totalPages = useMemo(
         () => Math.ceil((businessProfiles?.length || 0) / ITEMS_PER_PAGE),
         [businessProfiles]
     );
 
+    const safePage = Math.min(currentPage, Math.max(1, totalPages));
+
     const currentBusinessProfiles = useMemo(() => {
-        if (!businessProfiles) return [];
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return businessProfiles.slice(start, start + ITEMS_PER_PAGE);
-    }, [businessProfiles, currentPage]);
+        if (!filteredBusinessProfiles) return [];
+        const start = (safePage - 1) * ITEMS_PER_PAGE;
+        return filteredBusinessProfiles.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredBusinessProfiles, safePage]);
 
     return (
         <div className="w-full flex flex-col gap-2">
@@ -37,10 +48,11 @@ export const BusinessTable = () => {
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2 }}
                             onClick={() => setSelectedBusinessProfile(profile)}
-                            className={`flex items-center gap-3 px-3 py-1 rounded-xl cursor-pointer border transition-all duration-200 ${activeBusinessProfile?._id === profile._id
-                                ? 'bg-foreground/10 border-foreground/20'
-                                : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
-                                }`}
+                            className={`flex items-center gap-3 px-3 py-1 rounded-xl cursor-pointer border transition-all duration-200 ${
+                                activeBusinessProfile?._id === profile._id
+                                    ? 'bg-foreground/10 border-foreground/20'
+                                    : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
+                            }`}
                         >
                             {profile.avatar ? (
                                 <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0">
@@ -61,6 +73,14 @@ export const BusinessTable = () => {
                                 <span className="font-medium truncate">{profile.legalName}</span>
                                 <span className="flex items-center gap-1.5 w-fit">
                                     <span className="text-xs text-foreground/50 tracking-wide">{profile.type}</span>
+                                    <span className="text-foreground/30 text-xs">·</span>
+                                    <span className={`text-xs font-medium ${
+                                        profile.status === 'active'
+                                            ? 'text-emerald-500'
+                                            : 'text-foreground/40'
+                                    }`}>
+                                        {profile.status === 'active' ? 'Active' : 'Inactive'}
+                                    </span>
                                 </span>
                             </div>
                         </motion.div>

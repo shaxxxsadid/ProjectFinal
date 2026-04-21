@@ -6,6 +6,8 @@ import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
+import { useWarehouseStore } from "@/app/store/warehouseStore";
+import toast from "react-hot-toast";
 
 const getAvailabilityMeta = (available: number, quantity: number) => {
     if (quantity === 0) return { label: 'Empty', color: 'text-foreground/30 bg-foreground/5 border-foreground/10' };
@@ -16,14 +18,21 @@ const getAvailabilityMeta = (available: number, quantity: number) => {
 };
 
 export const StockDetails = () => {
-    const { selectedStock, setSelectedStock } = useStokeStore();
+    const { selectedStock, setSelectedStock, deleteStock } = useStokeStore();
     const { products } = useProductsStore();
+    const { warehouses } = useWarehouseStore();
     const activeStock: StokeShort | null = selectedStock ?? null;
 
     const productName = useMemo(() => {
         if (!activeStock) return null;
         return products.items.find(p => p._id === activeStock.productId)?.name ?? null;
     }, [activeStock, products.items]);
+
+    const warehouseName = useMemo(() => {
+        if (!activeStock) return null;
+        if (!warehouses) return null;
+        return warehouses.find(p => p._id === activeStock.warehouseId)?.name ?? null;
+    }, [activeStock, warehouses]);
 
     if (!activeStock) {
         return <div className="w-full h-90 rounded-3xl border border-transparent" />;
@@ -116,7 +125,7 @@ export const StockDetails = () => {
                     {[
                         { label: 'Stock ID', value: activeStock._id },
                         { label: 'Product', value: productName ?? activeStock.productId },
-                        { label: 'Warehouse', value: activeStock.warehouseId },
+                        { label: 'Warehouse', value: warehouseName ?? activeStock.warehouseId },
                         { label: 'Expiry Date', value: activeStock.expiryDate ? new Date(activeStock.expiryDate).toLocaleDateString() : '—' },
                         { label: 'Created At', value: new Date(activeStock.createdAt).toLocaleString() },
                         { label: 'Updated At', value: new Date(activeStock.updatedAt).toLocaleString() },
@@ -136,7 +145,12 @@ export const StockDetails = () => {
                         </svg>
                         Edit
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200">
+                    <button
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
+                        onClick={() => {
+                            toast.promise(deleteStock(activeStock._id), { loading: 'Deleting...', success: 'Stock deleted', error: 'Failed to delete stock' });
+                        }}
+                    >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>

@@ -9,18 +9,33 @@ import { UserShort } from "@/types/store.types";
 const ITEMS_PER_PAGE = 6;
 const ITEM_HEIGHT = 52;
 
-export const UserTable = () => {
+export const UserTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
   const { user, selectedUser, setSelectedUser, avatarVersions } = useUserStore();
   const activeUser: UserShort | null = selectedUser ?? null;
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = useMemo(() => Math.ceil((user?.length || 0) / ITEMS_PER_PAGE), [user]);
+  const filteredUsers = useMemo(() => {
+    if (!user) return [];
+    if (!searchQuery.trim()) return user;
+    const q = searchQuery.toLowerCase();
+    return user.filter(u =>
+      u.username?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q)
+    );
+  }, [user, searchQuery]);
+
+  const totalPages = useMemo(
+    () => Math.ceil((filteredUsers.length || 0) / ITEMS_PER_PAGE),
+    [filteredUsers]
+  );
+
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
 
   const currentUsers = useMemo(() => {
-    if (!user) return [];
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return user.slice(start, start + ITEMS_PER_PAGE);
-  }, [user, currentPage]);
+    const start = (safePage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, safePage]);
+
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -42,17 +57,16 @@ export const UserTable = () => {
                 <div
                   key={u._id}
                   onClick={() => setSelectedUser(activeUser?._id === u._id ? null : u)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer border border-transparent shrink-0 ${
-                    activeUser?._id === u._id
-                      ? 'bg-foreground/10 border-foreground/20'
-                      : 'hover:bg-foreground/5 hover:border-foreground/10'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer border border-transparent shrink-0 ${activeUser?._id === u._id
+                    ? 'bg-foreground/10 border-foreground/20'
+                    : 'hover:bg-foreground/5 hover:border-foreground/10'
+                    }`}
                   style={{ height: `${ITEM_HEIGHT}px` }}
                 >
-                  <UserAvatar 
-                    size="sm" 
-                    email={u.email} 
-                    name={u.username ?? `${u.firstName} ${u.lastName}`} 
+                  <UserAvatar
+                    size="sm"
+                    email={u.email}
+                    name={u.username ?? `${u.firstName} ${u.lastName}`}
                     avatarVersion={avatarVersions?.[u.email] ?? avatarVersions?.[u._id]}
                   />
                   <div className="flex flex-col min-w-0 flex-1">
@@ -61,11 +75,10 @@ export const UserTable = () => {
                     </span>
                     <span className="text-xs text-muted-foreground truncate">{u.email}</span>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md border shrink-0 ${
-                    u.isActive
-                      ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'
-                      : 'border-slate-500/30 text-slate-500 bg-slate-500/10'
-                  }`}>
+                  <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md border shrink-0 ${u.isActive
+                    ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'
+                    : 'border-slate-500/30 text-slate-500 bg-slate-500/10'
+                    }`}>
                     {u.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>

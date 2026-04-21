@@ -3,21 +3,18 @@ import { useRef, useState, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import UserAvatar from "@/app/components/ui/userAvatar";
-import { AccountShort } from "@/types/store.types";
+import { AccountShort, UserShort } from "@/types/store.types";
 import { useAccountStore } from "@/app/store/accountStore";
 import { useUserStore } from "@/app/store/userStore";
 import Image from "next/image";
 import { useProviderStore } from "@/app/store/providerStore";
 
 export const AccountDetails = () => {
-    const { selectedAccount, setSelectedAccount } = useAccountStore();
-    const { avatarVersions, user } = useUserStore();
+    const { selectedAccount, setSelectedAccount, deleteAccount } = useAccountStore();
+    const { avatarVersions, user, deleteUser } = useUserStore();
     const { providers } = useProviderStore();
 
     const activeAccount: AccountShort | null = selectedAccount ?? null;
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const avatarInputRef = useRef<HTMLInputElement>(null);
-    const [avatarUploading, setAvatarUploading] = useState(false);
     const linkedUser = useMemo(() =>
         user?.find(u => u._id === activeAccount?.userId),
         [user, activeAccount?.userId]
@@ -96,22 +93,6 @@ export const AccountDetails = () => {
                             <h3 className="font-bold text-lg truncate">{linkedUser?.username ?? `${linkedUser?.firstName} ${linkedUser?.lastName}`}</h3>
                             <p className="text-xs text-muted-foreground mt-1 truncate">{linkedUser?.email}</p>
                         </div>
-
-                        <div className="flex items-center gap-3">
-                            <span className={`text-xs font-medium ${linkedUser?.isActive ? 'text-emerald-500' : 'text-slate-500'}`}>
-                                {linkedUser?.isActive ? 'Active' : 'Inactive'}
-                            </span>
-                            <button
-                                onClick={() => { }}
-                                className={`relative w-11 h-6 rounded-full border transition-all duration-300 ${linkedUser?.isActive ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-foreground/5 border-foreground/20'}`}
-                            >
-                                <motion.span
-                                    layout
-                                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                    className={`absolute top-0.5 w-5 h-5 rounded-full ${linkedUser?.isActive ? 'bg-emerald-500 left-5' : 'bg-foreground/30 left-0.5'}`}
-                                />
-                            </button>
-                        </div>
                     </div>
 
                     {/* Info Fields */}
@@ -120,7 +101,7 @@ export const AccountDetails = () => {
                             { label: 'Account ID', value: activeAccount._id.toString() },
                             { label: 'User', value: linkedUser ? (linkedUser.username || `${linkedUser.firstName} ${linkedUser.lastName}`.trim()) : 'Unknown' },
                             { label: 'Type', value: activeAccount?.type || 'Unknown' },
-                            { label: 'Provider', value: linkedProvider?.displayName || 'Unknown' },
+                            { label: 'Provider', value: linkedProvider?.displayName || 'Credentials' },
                             { label: 'Created At', value: new Date(activeAccount.createdAt).toLocaleString() },
                             { label: 'Updated At', value: new Date(activeAccount.updatedAt).toLocaleString() },
                         ].map(({ label, value }) => (
@@ -134,16 +115,22 @@ export const AccountDetails = () => {
                     {/* Actions */}
                     <div className="flex gap-2 pt-2 border-t border-foreground/10">
                         <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-teal-500/20 text-teal-500 text-sm font-medium hover:bg-foreground/5 transition-colors duration-200"
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 1 1 3.182 3.182L7.5 19.213l-4.5 1.125 1.125-4.5L16.862 3.487z" />
-                            </svg>
-                            Edit
-                        </button>
-                        <button
-                            onClick={() => { }}
+                            onClick={async () => {
+                                if (!activeAccount || !linkedUser) return;
+
+                                toast.promise(
+                                    (async () => {
+                                        await deleteAccount(activeAccount._id);
+                                        await deleteUser(linkedUser._id);
+                                    })(),
+                                    {
+                                        loading: 'Deleting account and user...',
+                                        success: 'Account and user deleted successfully',
+                                        error: 'Failed to delete',
+                                    },
+                                    { id: 'delete-account-user' }
+                                );
+                            }}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

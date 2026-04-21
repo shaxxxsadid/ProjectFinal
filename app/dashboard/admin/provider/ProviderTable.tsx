@@ -9,30 +9,39 @@ import { PROVIDER_META } from "@/app/components/providerMeta";
 
 const ITEMS_PER_PAGE = 6;
 
-export const ProviderTable = () => {
+export const ProviderTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
     const { providers, setSelectedProvider, selectedProvider } = useProviderStore();
     const activeProvider: ProviderShort | null = selectedProvider ?? null;
     const [currentPage, setCurrentPage] = useState(1);
 
+    const filteredProviders = useMemo(() => {
+        if (!providers) return [];
+        if (!searchQuery.trim()) return providers;
+        const q = searchQuery.toLowerCase();
+        return providers.filter((provider) => provider.displayName.toLowerCase().includes(q) || provider.publicId.toLowerCase().includes(q));
+    }, [providers, searchQuery]);
+
     const totalPages = useMemo(
-        () => Math.ceil((providers?.length || 0) / ITEMS_PER_PAGE),
-        [providers]
+        () => Math.ceil((filteredProviders.length || 0) / ITEMS_PER_PAGE),
+        [filteredProviders]
     );
 
+    const safePage = Math.min(currentPage, Math.max(1, totalPages));
+
     const currentProviders = useMemo(() => {
-        if (!providers) return [];
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return providers.slice(start, start + ITEMS_PER_PAGE);
-    }, [providers, currentPage]);
+        if (!filteredProviders) return [];
+        const start = (safePage - 1) * ITEMS_PER_PAGE;
+        return filteredProviders.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredProviders, safePage]);
 
     return (
-        <div className="w-full justify-between flex flex-col min-h-114 gap-2">
-            <div className="flex flex-col gap-2">
+        <div className="w-full justify-between flex flex-col min-h-104">
+            <div className="flex flex-col">
                 <AnimatePresence mode="popLayout">
                     {currentProviders.map((provider) => {
                         const meta = PROVIDER_META[provider.publicId];
                         const isActive = activeProvider?._id === provider._id;
-                        const isConnected = provider.isActive; // замени на реальное поле
+                        const isConnected = provider.isActive;
 
                         return (
                             <motion.div
@@ -43,8 +52,8 @@ export const ProviderTable = () => {
                                 transition={{ duration: 0.2 }}
                                 onClick={() => setSelectedProvider(provider)}
                                 className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all duration-200 ${isActive
-                                        ? 'bg-foreground/10 border-foreground/20'
-                                        : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
+                                    ? 'bg-foreground/10 border-foreground/20'
+                                    : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
                                     }`}
                             >
                                 {/* Иконка провайдера */}
