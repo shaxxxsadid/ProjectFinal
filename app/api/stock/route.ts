@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
 }
 
-export async function PUT(request: Request) {
+export async function PATCH(request: Request) {
     const body = await request.json();
     try {
         await connectToDatabase();

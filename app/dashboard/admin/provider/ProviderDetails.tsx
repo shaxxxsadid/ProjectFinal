@@ -1,18 +1,17 @@
 'use client';
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import UserAvatar from "@/app/components/ui/userAvatar";
 import { ProviderShort } from "@/types/store.types";
 import { useProviderStore } from "@/app/store/providerStore";
 import { PROVIDER_META } from "@/app/components/providerMeta";
+import { CrudProviderModal } from "@/app/components/ui/admin/modal/ProviderCrudModal";
 
 export const ProviderDetails = () => {
-    const { selectedProvider, setSelectedProvider, deleteProvider } = useProviderStore();
+    const { selectedProvider, setSelectedProvider, deleteProvider, toggleActiveProvider, updateProvider } = useProviderStore();
     const activeProvider: ProviderShort | null = selectedProvider ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const avatarInputRef = useRef<HTMLInputElement>(null);
-    const [avatarUploading, setAvatarUploading] = useState(false);
     if (!activeProvider) {
         return <div className="w-full h-90 rounded-3xl border border-transparent" />;
     }
@@ -21,7 +20,7 @@ export const ProviderDetails = () => {
 
     return (
         <>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
                 <motion.div
                     key="details-panel"
                     initial={{ opacity: 0, x: 20, scale: 0.95 }}
@@ -65,7 +64,17 @@ export const ProviderDetails = () => {
                                 <motion.span
                                     layout
                                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                    className={`absolute top-0.5 w-5 h-5 rounded-full ${activeProvider?.isActive ? 'bg-emerald-500 left-5' : 'bg-foreground/30 left-0.5'}`}
+                                    onClick={() => {
+                                        toast.promise(
+                                            toggleActiveProvider(activeProvider._id, !activeProvider.isActive),
+                                            {
+                                                loading: 'Updating provider...',
+                                                success: 'Provider updated successfully!',
+                                                error: 'Failed to update provider',
+                                            }
+                                        )
+                                    }}
+                                    className={`absolute cursor-pointer top-px w-5 h-5 rounded-full ${activeProvider?.isActive ? 'bg-emerald-500 left-5' : 'bg-foreground/30 left-0.5'}`}
                                 />
                             </button>
                         </div>
@@ -99,7 +108,7 @@ export const ProviderDetails = () => {
                             Edit
                         </button>
                         <button
-                            onClick={() => { 
+                            onClick={() => {
                                 if (window.confirm('Are you sure you want to delete this provider?')) {
                                     toast.promise(deleteProvider(activeProvider._id), {
                                         loading: 'Deleting provider...',
@@ -107,7 +116,7 @@ export const ProviderDetails = () => {
                                         error: 'Failed to delete provider',
                                     })
                                 }
-                             }}
+                            }}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -117,6 +126,27 @@ export const ProviderDetails = () => {
                         </button>
                     </div>
                 </motion.div>
+                <CrudProviderModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSubmit={async (data) => {
+                        const result = await updateProvider(
+                            activeProvider._id,
+                            data as Omit<ProviderShort, '_id' | 'createdAt' | 'updatedAt'>
+                        );
+
+                        if (result?.success) {
+                            toast.success('Provider updated successfully!');
+                            setIsModalOpen(false);
+                        } else {
+                            toast.error(result?.error || 'Failed to update provider');
+                        }
+
+                        return result ?? { success: false, error: 'Unknown error' };
+                    }}
+                    mode="edit"
+                    initialValues={activeProvider}
+                />
             </AnimatePresence>
         </>
     );

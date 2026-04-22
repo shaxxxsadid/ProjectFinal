@@ -16,13 +16,13 @@ export interface FieldOption {
 export interface FieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'image-url';
+  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'image-url' | 'checkbox';
   required?: boolean;
   autoComplete?: string;
   initialValue?: string;
   placeholder?: string;
   options?: FieldOption[];
-  meta?: Record<string, string>; // доп данные, например fallbackName для аватара
+  meta?: Record<string, string>;
 }
 
 export interface FormModalProps {

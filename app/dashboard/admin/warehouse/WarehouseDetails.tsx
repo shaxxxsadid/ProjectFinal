@@ -1,12 +1,15 @@
 'use client';
+
 import { AnimatePresence, motion } from "framer-motion";
 import { WarehouseShort } from "@/types/store.types";
 import { useWarehouseStore } from "@/app/store/warehouseStore";
 import { cn } from "@/lib/utils";
 import { FaWarehouse } from "react-icons/fa";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useUserStore } from "@/app/store/userStore";
 import toast from "react-hot-toast";
+import { WarehouseCrudModal } from "@/app/components/ui/admin/modal/WarehouseCrudModal";
+import { useRoleStore } from "@/app/store/roleStore";
 
 const TYPE_META: Record<string, { label: string; color: string }> = {
     main: { label: 'Main', color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
@@ -17,12 +20,19 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
 };
 
 export const WarehouseDetails = () => {
-    const { selectedWarehouse, setSelectedWarehouse, deleteWarehouse } = useWarehouseStore();
+    const { selectedWarehouse, setSelectedWarehouse, deleteWarehouse, updateWarehouse } = useWarehouseStore();
     const activeWarehouse: WarehouseShort | null = selectedWarehouse ?? null;
     const { user: users } = useUserStore();
+    const { roles } = useRoleStore();
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
+    const managers = useMemo(() => {
+        const managerRoleId = roles?.find(r => r.name === 'manager')?._id;
+        return users?.filter(u => u.roleId === managerRoleId) ?? [];
+    }, [users, roles]);
+    
     const managerName = useMemo(() => {
-        if (!users || !activeWarehouse) return null;
+        if (!users || !activeWarehouse?.managerId) return null;
         const manager = Array.isArray(users)
             ? users.find(u => u._id === activeWarehouse.managerId)
             : null;
@@ -43,9 +53,10 @@ export const WarehouseDetails = () => {
         : 0;
 
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
+            {/* ✅ Динамический key для корректной анимации при смене склада */}
             <motion.div
-                key="details-panel"
+                key={activeWarehouse._id}
                 initial={{ opacity: 0, x: 20, scale: 0.95 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 20, scale: 0.95 }}
@@ -120,14 +131,18 @@ export const WarehouseDetails = () => {
                     ].map(({ label, value }) => (
                         <div key={label} className="flex items-center justify-between gap-4 py-2.5 border-b border-foreground/5 last:border-0">
                             <span className="text-xs uppercase text-muted-foreground font-bold tracking-wider shrink-0">{label}</span>
-                            <span className="text-sm text-right truncate font-medium text-foreground/80" title={value}>{value}</span>
+                            <span className="text-sm text-right truncate font-medium text-foreground/80" title={String(value)}>{String(value)}</span>
                         </div>
                     ))}
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t border-foreground/10">
-                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-teal-500/20 text-teal-500 text-sm font-medium hover:bg-foreground/5 transition-colors duration-200">
+                    {/* ✅ Добавлен onClick для открытия модалки */}
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-teal-500/20 text-teal-500 text-sm font-medium hover:bg-foreground/5 transition-colors duration-200"
+                    >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 1 1 3.182 3.182L7.5 19.213l-4.5 1.125 1.125-4.5L16.862 3.487z" />
                         </svg>
@@ -144,6 +159,25 @@ export const WarehouseDetails = () => {
                     </button>
                 </div>
             </motion.div>
+            
+            {/* ✅ Убрано as UserShort[], заменено на безопасный fallback */}
+            <WarehouseCrudModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={async (data) => {
+                    const result = await updateWarehouse(activeWarehouse._id, data as Omit<WarehouseShort, '_id' | 'createdAt' | 'updatedAt'>);
+                    if (result.success) {
+                        setIsModalOpen(false);
+                        toast.success('Warehouse updated!');
+                    } else { 
+                        toast.error(result.error || 'Failed to update warehouse');
+                    }
+                    return result;
+                }}
+                mode="edit"
+                initialValues={activeWarehouse}
+                managers={managers}
+            />
         </AnimatePresence>
     );
 };

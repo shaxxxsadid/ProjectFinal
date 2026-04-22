@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import UserAvatar from "@/app/components/ui/userAvatar";
@@ -16,6 +16,30 @@ export const BusinessDetails = () => {
 
     if (!activeBusinessProfile) {
         return <div className="w-full h-90 rounded-3xl border border-transparent" />;
+    }
+
+    const displayAvatar = () => {
+        const avatar = activeBusinessProfile.avatar;
+        const isExternal = avatar?.startsWith('https');
+
+        if (activeBusinessProfile.avatar && isExternal) {
+            return (
+                <div className="relative w-24 h-24">
+                    <Image
+                        src={activeBusinessProfile.avatar}
+                        alt={activeBusinessProfile.legalName}
+                        fill
+                        sizes="96px"
+                        className="rounded-full object-cover shrink-0"
+                    />
+                </div>
+            );
+        }
+
+        return <UserAvatar
+            size="xl"
+            name={activeBusinessProfile.legalName}
+        />
     }
 
     return (
@@ -39,22 +63,7 @@ export const BusinessDetails = () => {
                     <div className="flex flex-col items-center gap-3">
                         {/* ✅ position: relative для fill-изображения */}
                         <div className="relative w-24 h-24 rounded-full overflow-hidden">
-                            {activeBusinessProfile.avatar ? (
-                                <Image
-                                    fill
-                                    src={activeBusinessProfile.avatar}
-                                    alt={activeBusinessProfile.legalName}
-                                    sizes="96px"
-                                    className="object-cover rounded-full"
-                                    unoptimized
-                                    priority={false}
-                                />
-                            ) : (
-                                <UserAvatar
-                                    size="xl"
-                                    name={activeBusinessProfile.legalName}
-                                />
-                            )}
+                            {displayAvatar()}
                         </div>
                         {/*  */}
                         <div className="text-center">

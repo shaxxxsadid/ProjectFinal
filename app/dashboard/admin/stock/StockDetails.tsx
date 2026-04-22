@@ -5,9 +5,10 @@ import { useStokeStore } from "@/app/store/stokeStore";
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useWarehouseStore } from "@/app/store/warehouseStore";
 import toast from "react-hot-toast";
+import { StockCrudModal } from "@/app/components/ui/admin/modal/StockCrudModal";
 
 const getAvailabilityMeta = (available: number, quantity: number) => {
     if (quantity === 0) return { label: 'Empty', color: 'text-foreground/30 bg-foreground/5 border-foreground/10' };
@@ -18,11 +19,12 @@ const getAvailabilityMeta = (available: number, quantity: number) => {
 };
 
 export const StockDetails = () => {
-    const { selectedStock, setSelectedStock, deleteStock } = useStokeStore();
+    const { selectedStock, setSelectedStock, deleteStock, updateStock } = useStokeStore();
     const { products } = useProductsStore();
     const { warehouses } = useWarehouseStore();
     const activeStock: StokeShort | null = selectedStock ?? null;
-
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingStock, setEditingStock] = useState<StokeShort | null>(null);
     const productName = useMemo(() => {
         if (!activeStock) return null;
         return products.items.find(p => p._id === activeStock.productId)?.name ?? null;
@@ -44,7 +46,7 @@ export const StockDetails = () => {
         : 0;
 
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
             <motion.div
                 key="details-panel"
                 initial={{ opacity: 0, x: 20, scale: 0.95 }}
@@ -139,7 +141,8 @@ export const StockDetails = () => {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t border-foreground/10">
-                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-teal-500/20 text-teal-500 text-sm font-medium hover:bg-foreground/5 transition-colors duration-200">
+                    <button className=" cursor-pointer flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-teal-500/20 text-teal-500 text-sm font-medium hover:bg-foreground/5 transition-colors duration-200"
+                        onClick={() => setIsModalOpen(true)}>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 1 1 3.182 3.182L7.5 19.213l-4.5 1.125 1.125-4.5L16.862 3.487z" />
                         </svg>
@@ -158,6 +161,28 @@ export const StockDetails = () => {
                     </button>
                 </div>
             </motion.div>
+            <StockCrudModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingStock(null);
+                }}
+                mode={'edit'}
+                initialValues={activeStock}
+                products={products.items || []}
+                warehouses={warehouses || []}
+                onSubmit={async (data) => {
+                    const result = await updateStock(activeStock._id, data as Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>);
+                    if (result?.success) {
+                        toast.success('Stock updated');
+                        setIsModalOpen(false);
+                        setEditingStock(null);
+                    } else {
+                        toast.error(result?.error || 'Failed to update stock');
+                    }
+                    return result ?? { success: false, error: 'Unknown error' };
+                }}
+            />
         </AnimatePresence>
     );
 };

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { RoleShort } from "@/types/store.types";
 import { useRoleStore } from "@/app/store/roleStore";
 import toast from "react-hot-toast";
+import { CrudRoleModal } from "@/app/components/ui/admin/modal/RoleCrudModal";
 
 const ROLE_COLORS = [
     "bg-violet-500/10 text-violet-400 border-violet-500/20",
@@ -22,7 +23,7 @@ const PRIORITY_META: Record<number, { label: string; color: string }> = {
 };
 
 export const RoleDetails = () => {
-    const { selectedRole, setSelectedRole, deleteRole } = useRoleStore();
+    const { selectedRole, setSelectedRole, deleteRole, updateRole } = useRoleStore();
     const activeRole: RoleShort | null = selectedRole ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -34,7 +35,7 @@ export const RoleDetails = () => {
     const priorityMeta = PRIORITY_META[activeRole.priority] ?? { label: `P${activeRole.priority}`, color: 'text-foreground/40 bg-foreground/5 border-foreground/10' };
 
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
             <motion.div
                 key="details-panel"
                 initial={{ opacity: 0, x: 20, scale: 0.95 }}
@@ -101,7 +102,7 @@ export const RoleDetails = () => {
                                 success: 'Role deleted successfully.',
                                 error: 'Failed to delete role.',
                             })
-                         }}
+                        }}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 text-sm font-medium hover:bg-red-500/10 transition-colors duration-200"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -111,6 +112,27 @@ export const RoleDetails = () => {
                     </button>
                 </div>
             </motion.div>
+            <CrudRoleModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={async (data) => {
+                        const result = await updateRole(
+                            activeRole._id,
+                            data as Omit<RoleShort, '_id' | 'createdAt' | 'updatedAt'>
+                        );
+
+                        if (result?.success) {
+                            toast.success('Role updated successfully!');
+                            setIsModalOpen(false);
+                        } else {
+                            toast.error(result?.error || 'Failed to update provider');
+                        }
+
+                        return result ?? { success: false, error: 'Unknown error' };
+                    }}
+                mode="edit"
+                initialValues={activeRole}
+            />
         </AnimatePresence>
     );
 };

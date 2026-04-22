@@ -155,6 +155,54 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
             setProductsLoading(false);
         }
     },
+    updateProduct: async (productId: string, data: Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>) => {
+        try {
+            set({ productIsLoading: true, products: { ...get().products, error: null } });
+
+            const res = await fetch(`/api/products`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ _id: productId, ...data }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to update product');
+            }
+
+            const response = await res.json();
+            const updatedProduct = response.data ?? response;
+
+            // ✅ Нормализуем ID для сравнения
+            const normalizedId = String(productId);
+
+            set((state) => {
+                const items = state.products.items.map(p =>
+                    String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
+                );
+                const filteredItems = state.products.filteredItems.map(p =>
+                    String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
+                );
+                const updatedSelected = state.selectedProduct && String(state.selectedProduct._id) === normalizedId
+                    ? { ...state.selectedProduct, ...updatedProduct }
+                    : state.selectedProduct;
+
+                return {
+                    products: { ...state.products, items, filteredItems },
+                    selectedProduct: updatedSelected,
+                    productIsLoading: false,
+                };
+            });
+
+            return { success: true };
+        } catch (error) {
+            set((state) => ({
+                products: { ...state.products, error: error instanceof Error ? error.message : 'Unknown error' },
+                productIsLoading: false,
+            }));
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    },
     deleteProduct: async (_id: string) => {
         const { setProductsLoading, setProductsError, fetchProducts } = get();
         try {

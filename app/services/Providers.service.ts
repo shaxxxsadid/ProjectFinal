@@ -41,6 +41,15 @@ class ProvidersService {
             throw error;
         }
     }
+    async toggleActiveProvider(_id: string, isActive: boolean) {
+        try {
+            const updatedProvider = await Providers.findByIdAndUpdate(_id, { isActive, updatedAt: new Date() }, { new: true });
+            return updatedProvider;
+        } catch (error) {
+            logger.error(`Failed to update provider: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    }
 
     async deleteProvider(_id: string) {
         try {

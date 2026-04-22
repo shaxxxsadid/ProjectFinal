@@ -32,7 +32,7 @@ class RolesService {
         }
     }
 
-    async updateRole(_id: string, name: string, updateData: { description?: string; priority?: number }) {
+    async updateRole(_id: string, updateData: { description?: string; priority?: number }) {
         try {
             const updatedRole = await Roles.findByIdAndUpdate(_id, { ...updateData, updatedAt: new Date() }, { new: true });
             return updatedRole;

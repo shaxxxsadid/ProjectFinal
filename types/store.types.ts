@@ -8,6 +8,38 @@ export interface RoleShort {
     description?: string;
 }
 
+export interface ProductShort {
+    _id: string;
+    name: string;
+    sku: string;
+    weight: number;
+    length: number;
+    width: number;
+    height: number;
+    isIPPC_Certified: boolean;
+    isHeatTreated: boolean;
+    categoryId: string;
+    avatar?: string;
+    price?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface ProductsPagination {
+  page: number;
+  limit: number;
+  totalPages: number;
+  total: number;
+}
+
+export interface ProductsState {
+  items: ProductShort[];
+  filteredItems: ProductShort[];
+  pagination: ProductsPagination;
+  error: string | null;
+  isLoading: boolean;
+}
+
 export interface AccountShort {
     _id: string;
     userId: string;
@@ -184,6 +216,7 @@ export interface RoleStoreState {
     roles: RoleShort[] | null;
     fetchRoles: () => Promise<void>;
     deleteRole: (roleId: string) => Promise<void>;
+    updateRole: (roleId: string, data: Partial<Omit<RoleShort, '_id' | 'createdAt' | 'updatedAt'>>) => Promise<{ success: boolean; error?: string }>;
     selectedRole: RoleShort | null;
     setSelectedRole: (role: RoleShort | null) => void;
     isLoading: boolean;
@@ -193,7 +226,6 @@ export interface RoleStoreState {
 export interface BusinessProfileStoreState {
     businessProfiles: BusinessProfileShort[] | null;
     fetchBusinessProfiles: () => Promise<void>;
-    // Интерфейс
     updateBusinessProfile: (
         businessProfileId: string,
         data: Omit<BusinessProfileShort, '_id' | 'createdAt' | 'updatedAt'>
@@ -220,7 +252,9 @@ export interface ProviderStoreState {
     providers: ProviderShort[] | null;
     fetchProviders: () => Promise<void>;
     deleteProvider: (providerId: string) => Promise<void>;
+    updateProvider: (providerId: string, data: Omit<ProviderShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedProvider: (provider: ProviderShort | null) => void;
+    toggleActiveProvider: (providerId: string, active: boolean) => Promise<void>;
     selectedProvider: ProviderShort | null;
     isLoading: boolean;
     error: string | null;
@@ -230,6 +264,7 @@ export interface StokeStoreState {
     stock: StokeShort[] | null;
     fetchStock: () => Promise<void>;
     deleteStock: (stockId: string) => Promise<void>;
+    updateStock: (stockId: string, data: Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedStock: (stock: StokeShort | null) => void;
     selectedStock: StokeShort | null;
     isLoading: boolean;
@@ -240,6 +275,7 @@ export interface WarehouseStoreState {
     warehouses: WarehouseShort[] | null;
     fetchWarehouses: () => Promise<void>;
     deleteWarehouse: (warehouseId: string) => Promise<void>;
+    updateWarehouse: (warehouseId: string, data: Omit<WarehouseShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedWarehouse: (warehouse: WarehouseShort | null) => void;
     selectedWarehouse: WarehouseShort | null;
     isLoading: boolean;

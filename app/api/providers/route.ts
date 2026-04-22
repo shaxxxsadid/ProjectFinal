@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     }
 }
 
-export async function PUT (request: Request) {
+export async function PATCH (request: Request) {
     const { _id, name, displayName, isActive } = await request.json();
     try {
         await connectToDatabase();

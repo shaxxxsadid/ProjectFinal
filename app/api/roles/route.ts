@@ -58,13 +58,13 @@ export async function POST(request: Request) {
     Note: createdAt and updatedAt are set automatically
 */
 
-export async function PUT(request: Request) {
+export async function PATCH(request: Request) {
     try {
         const body = await request.json();
-        logger.info(`API: Received PUT request with body - ${JSON.stringify(body)}`);
+        logger.info(`API: Received PATCH request with body - ${JSON.stringify(body)}`);
         await connectToDatabase();
-        const { _id, name, ...updateData } = body;
-        const updatedRole = await rolesService.updateRole(_id, name, updateData);
+        const { _id, ...updateData } = body;
+        const updatedRole = await rolesService.updateRole(_id, updateData);
         return Response.json({ success: true, data: updatedRole });
     } catch (error) {
         logger.error({

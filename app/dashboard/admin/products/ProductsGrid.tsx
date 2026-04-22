@@ -1,11 +1,14 @@
 'use client';
-import { useMemo, useCallback } from "react";
+
+import { useMemo, useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pagination } from "@/app/components/ui/pagination";
 import { ProductShort } from "@/types/store.types";
+// ✅ Проверь путь: productsStore (с "s") или productStore — как у тебя реально называется файл
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
 import { cn } from "@/lib/utils";
+import { CrudProductModal } from "@/app/components/ui/admin/modal/ProductCrudModal";
 
 export const ProductGrid = () => {
     const {
@@ -17,7 +20,7 @@ export const ProductGrid = () => {
 
     const { filteredItems, pagination } = products;
     const { page, totalPages } = pagination;
-
+    const [isOpen, setIsOpen] = useState(false);
     const currentProducts = useMemo(() => {
         const start = (page - 1) * pagination.limit;
         return filteredItems.slice(start, start + pagination.limit);
@@ -31,12 +34,15 @@ export const ProductGrid = () => {
         <div className="w-full flex flex-col justify-between min-h-134 gap-4">
             <div className="grid grid-cols-3 gap-3">
                 <AnimatePresence mode="popLayout">
-                    {currentProducts.map((product: ProductShort, i) => {
-                        const isActive = selectedProduct?._id === product._id;
+                    {currentProducts.map((product: ProductShort, i: number) => {
+                        // ✅ Нормализуем сравнение ID через String()
+                        const isActive = selectedProduct 
+                            ? String(selectedProduct._id) === String(product._id)
+                            : false;
 
                         return (
                             <motion.div
-                                key={product._id}
+                                key={String(product._id)} // ✅ Ключ тоже нормализуем для стабильности
                                 layout
                                 initial={{ opacity: 0, y: 16 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -47,7 +53,7 @@ export const ProductGrid = () => {
                                     'group relative rounded-2xl p-3 cursor-pointer transition-all duration-300',
                                     'border flex flex-col gap-2 h-54',
                                     isActive
-                                        ? 'bg-foreground/10 border-foreground/20'
+                                        ? 'bg-foreground/10 border-foreground/20 ring-1 ring-foreground/30' // ✅ Добавил ring для лучшей видимости
                                         : 'bg-foreground/5 border-foreground/10 hover:bg-foreground/10 hover:border-foreground/20'
                                 )}
                             >
@@ -95,12 +101,13 @@ export const ProductGrid = () => {
                                     </div>
 
                                     <span className="text-sm font-semibold text-foreground/80 shrink-0">
-                                        {product.price?.toLocaleString()} ₽
+                                        {product.price?.toLocaleString('ru-RU')} ₽
                                     </span>
                                 </div>
                             </motion.div>
                         );
                     })}
+                    
                 </AnimatePresence>
             </div>
 
