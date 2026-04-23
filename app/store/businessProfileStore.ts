@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 export const useBusinessProfileStore = create<BusinessProfileStoreState>()(
   persist(
     (set, get) => ({
-      businessProfiles: null,
+      businessProfiles: [] as BusinessProfileShort[],
       isLoading: false,
       error: null,
       selectedBusinessProfile: null,
@@ -78,11 +78,13 @@ export const useBusinessProfileStore = create<BusinessProfileStoreState>()(
             throw new Error(result.error || 'Failed to create business profile');
           }
           await get().fetchBusinessProfiles();
+          return { success: true, error: undefined };
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Unknown error',
             isLoading: false
           });
+          return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
         }
       },
       deleteBusinessProfile: async (_id: string) => {

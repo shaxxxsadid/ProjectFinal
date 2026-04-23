@@ -26,8 +26,8 @@ const userSchema = new Schema({
     },
     passwordHash: { type: String},
     roleId: { type: Schema.Types.ObjectId, ref: 'Role' },
-    businessProfileId: { type: Schema.Types.ObjectId, ref: 'BusinessProfile' },
-    isActive: { type: Boolean, default: true },
+    businessProfileId: { type: Schema.Types.ObjectId, ref: 'BusinessProfile', required: false },
+    isActive: { type: Boolean, default: true, required: true },
     lastLogin: { type: Date },
 }, { timestamps: true });
 

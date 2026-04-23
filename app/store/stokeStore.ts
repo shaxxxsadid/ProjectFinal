@@ -20,6 +20,28 @@ export const useStokeStore = create<StokeStoreState>()(
                     set({ stock: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
                 }
             },
+            createStock: async (data: Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>) => {
+                try {
+                    set({ isLoading: true, error: null });
+                    const res = await fetch('/api/stock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+                    if (!res.ok) throw new Error('Failed to create stock');
+                    const response = await res.json();
+                    const createdStock = response.data ?? response;
+                    set((state) => ({
+                        stock: state.stock ? [...state.stock, createdStock] : [createdStock],
+                        isLoading: false,
+                    }));
+                    return { success: true, data: createdStock };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    set({ error: message, isLoading: false });
+                    return { success: false, error: message };
+                }
+            },
             updateStock: async (stockId: string, data: Partial<Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>>) => {
                 try {
                     set({ isLoading: true, error: null });
@@ -83,11 +105,18 @@ export const useStokeStore = create<StokeStoreState>()(
                         body: JSON.stringify({ _id: stockId }),
                     });
                     if (!res.ok) throw new Error('Failed to delete stock');
-                    const data = await res.json();
-                    const stock = data.data ?? null;
-                    set({ stock, isLoading: false });
+                    set((state) => ({
+                        stock: (Array.isArray(state.stock) ? state.stock : []).filter(item => item._id !== stockId),
+                        selectedStock: state.selectedStock?._id === stockId ? null : state.selectedStock,
+                        isLoading: false,
+                    }));
+
                 } catch (error) {
-                    set({ stock: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
+                    set((state) => ({
+                        stock: state.stock, // сохраняем текущий массив
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        isLoading: false,
+                    }));
                 }
             },
             setSelectedStock: (stock: StokeShort | null) => set({ selectedStock: stock }),

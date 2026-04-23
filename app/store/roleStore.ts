@@ -1,10 +1,11 @@
 import { RoleShort, RoleStoreState } from "@/types/store.types";
+import { get } from "http";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export const useRoleStore = create<RoleStoreState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             roles: null,
             isLoading: false,
             error: null,
@@ -15,12 +16,90 @@ export const useRoleStore = create<RoleStoreState>()(
                 try {
                     set({ isLoading: true, error: null });
                     const res = await fetch('/api/roles');
-                    if (!res.ok) throw new Error('Failed to fetch role data');
-                    const data = await res.json();
-                    const roles = Array.isArray(data) ? data : data.data ?? [];
-                    set({ roles, isLoading: false });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    }
+
+                    const raw = await res.json();
+
+                    // ️ Безопасное извлечение массива из любых популярных форматов ответа
+                    const extractArray = (payload: unknown): unknown[] => {
+                        if (Array.isArray(payload)) return payload;
+                        if (typeof payload === 'object' && payload !== null) {
+                            const obj = payload as Record<string, unknown>;
+                            for (const key of ['data', 'items', 'roles', 'results', 'list']) {
+                                if (Array.isArray(obj[key])) return obj[key] as unknown[];
+                            }
+                            if (typeof obj.data === 'object' && obj.data !== null) {
+                                for (const key of ['items', 'roles', 'results', 'list']) {
+                                    if (Array.isArray((obj.data as Record<string, unknown>)[key])) {
+                                        return (obj.data as Record<string, unknown>)[key] as unknown[];
+                                    }
+                                }
+                            }
+                        }
+                        return [];
+                    };
+
+                    const parsedRoles = extractArray(raw);
+                    console.log('✅ [fetchRoles] Extracted roles array:', parsedRoles); // 🔍
+
+                    if (!Array.isArray(parsedRoles)) {
+                        throw new Error('API вернул не массив ролей');
+                    }
+
+                    set({
+                        roles: parsedRoles as RoleShort[],
+                        isLoading: false
+                    });
+
                 } catch (error) {
-                    set({ roles: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
+                    console.error('❌ [fetchRoles] Failed:', error);
+                    set({
+                        roles: [],
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        isLoading: false
+                    });
+                }
+            },
+            createRole: async (data: Omit<RoleShort, '_id' | 'createdAt' | 'updatedAt'>) => {
+                try {
+                    set({ isLoading: true, error: null });
+
+                    const res = await fetch(`/api/roles`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Failed to create role');
+                    }
+
+                    const response = await res.json();
+                    const createdRole = response.data ?? response;
+
+                    set((state) => ({
+                        roles: state.roles
+                            ? [...state.roles, createdRole]
+                            : [createdRole],
+                        isLoading: false,
+                    }));
+
+                    return { success: true };
+
+                } catch (error) {
+                    set((state) => ({
+                        roles: state.roles,
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        isLoading: false,
+                    }));
+                    return {
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    };
                 }
             },
             updateRole: async (
@@ -86,11 +165,18 @@ export const useRoleStore = create<RoleStoreState>()(
                         body: JSON.stringify({ _id: roleId }),
                     });
                     if (!res.ok) throw new Error('Failed to delete role');
+
+                    // ✅ Гарантируем массив
                     const data = await res.json();
-                    const roles = data.data ?? null;
+                    const roles = Array.isArray(data.data) ? data.data : [];
+                    get().fetchRoles();
                     set({ roles, isLoading: false });
                 } catch (error) {
-                    set({ roles: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
+                    set({
+                        roles: [],
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        isLoading: false
+                    });
                 }
             },
         }),

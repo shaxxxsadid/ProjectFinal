@@ -29,7 +29,7 @@ export const useUserStore = create<UserStoreState>()(
                     if (!res.ok) throw new Error('Failed to fetch user data');
                     const data = await res.json();
                     const users = Array.isArray(data) ? data : data.users ?? [];
-                    
+
                     // ✅ Сохраняем существующие версии аватар при обновлении списка
                     set((state) => ({
                         user: users,
@@ -40,7 +40,34 @@ export const useUserStore = create<UserStoreState>()(
                     set({ user: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
                 }
             },
+            createUser: async (data: Omit<UserShort, '_id' | 'createdAt' | 'updatedAt'> & { password: string }) => {
+                try {
+                    set({ isLoading: true, error: null });
 
+                    const res = await fetch('/api/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!res.ok) throw new Error('Failed to create user');
+
+                    const newUser = await res.json();
+                    if (!newUser) throw new Error('Failed to create user');
+
+                    set((state) => ({
+                        user: [...(state.user || []), newUser],
+                        avatarVersions: { ...state.avatarVersions, [newUser._id]: 0 },
+                        isLoading: false,
+                    }));
+
+                    return { success: true, newUser };
+
+                } catch (error) {
+                    set({ isLoading: false, error: error instanceof Error ? error.message : 'Unknown error' });
+                    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+                }
+            },
             toggleUserActive: async (userId: string) => {
                 // оптимистичное обновление
                 set((state) => ({
@@ -101,7 +128,7 @@ export const useUserStore = create<UserStoreState>()(
                         body: JSON.stringify({ _id: userId, ...data }),
                     });
                     if (!res.ok) throw new Error('Failed to update user');
-                    
+
                     const updated = await res.json();
                     console.log('updated response:', updated);
                     const updatedUser = updated.data ?? updated;
@@ -129,9 +156,9 @@ export const useUserStore = create<UserStoreState>()(
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         // ✅ Отправляем _id только если он есть (для администратора)
-                        body: JSON.stringify({ 
-                            ...(userId && { _id: userId }), 
-                            avatar: base64 
+                        body: JSON.stringify({
+                            ...(userId && { _id: userId }),
+                            avatar: base64
                         }),
                     });
 

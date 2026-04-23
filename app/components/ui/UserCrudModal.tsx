@@ -1,11 +1,9 @@
 // UserCrudModal.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { FieldConfig, FormModal } from "./modal";
 import { useRoleStore } from '@/app/store/roleStore';
-import { IBusinessProfile } from '@/types/dbData';
-import { logger } from '@/app/lib/logger';
 import { useBusinessProfileStore } from '@/app/store/businessProfileStore';
 
 interface UserUpdateData {

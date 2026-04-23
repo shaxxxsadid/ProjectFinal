@@ -62,6 +62,12 @@ export const BusinessProfileCrudModal = ({
       initialValue: initialValues?.taxId || '',
     },
     {
+      name: 'profileNumber',
+      label: 'Profile number',
+      type: 'text',
+      initialValue: initialValues?.profileNumber || '',
+    },
+    {
       name: 'type',
       label: 'Business type',
       type: 'select',

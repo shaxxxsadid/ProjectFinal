@@ -26,18 +26,18 @@ export interface ProductShort {
 }
 
 export interface ProductsPagination {
-  page: number;
-  limit: number;
-  totalPages: number;
-  total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    total: number;
 }
 
 export interface ProductsState {
-  items: ProductShort[];
-  filteredItems: ProductShort[];
-  pagination: ProductsPagination;
-  error: string | null;
-  isLoading: boolean;
+    items: ProductShort[];
+    filteredItems: ProductShort[];
+    pagination: ProductsPagination;
+    error: string | null;
+    isLoading: boolean;
 }
 
 export interface AccountShort {
@@ -205,6 +205,7 @@ export interface UserStoreState {
     toggleUserActive: (userId: string) => Promise<void>;
     deleteUser: (userId: string) => Promise<void>;
     updateUser: (userId: string, data: { username?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
+    createUser: (data: Omit<UserShort, '_id' | 'createdAt' | 'updatedAt'> & { password: string }) => Promise<{ success: boolean; error?: string; data?: UserShort }>;
     uploadAvatar: (userId: string | undefined, file: File) => Promise<void>;
     avatarVersions?: Record<string, number>;
     bumpAvatarVersion: (userId: string) => void;
@@ -216,6 +217,7 @@ export interface RoleStoreState {
     roles: RoleShort[] | null;
     fetchRoles: () => Promise<void>;
     deleteRole: (roleId: string) => Promise<void>;
+    createRole: (data: Omit<RoleShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     updateRole: (roleId: string, data: Partial<Omit<RoleShort, '_id' | 'createdAt' | 'updatedAt'>>) => Promise<{ success: boolean; error?: string }>;
     selectedRole: RoleShort | null;
     setSelectedRole: (role: RoleShort | null) => void;
@@ -230,7 +232,7 @@ export interface BusinessProfileStoreState {
         businessProfileId: string,
         data: Omit<BusinessProfileShort, '_id' | 'createdAt' | 'updatedAt'>
     ) => Promise<{ success: boolean; data?: BusinessProfileShort; error?: string }>;
-    createBusinessProfile: (data: Omit<BusinessProfileShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    createBusinessProfile: (data: Omit<BusinessProfileShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; data?: BusinessProfileShort; error?: string }>;
     deleteBusinessProfile: (businessProfileId: string) => Promise<void>;
     selectedBusinessProfile: BusinessProfileShort | null;
     setSelectedBusinessProfile: (profile: BusinessProfileShort | null) => void;
@@ -254,6 +256,7 @@ export interface ProviderStoreState {
     deleteProvider: (providerId: string) => Promise<void>;
     updateProvider: (providerId: string, data: Omit<ProviderShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedProvider: (provider: ProviderShort | null) => void;
+    createProvider: (data: Omit<ProviderShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string; data?: ProviderShort }>;
     toggleActiveProvider: (providerId: string, active: boolean) => Promise<void>;
     selectedProvider: ProviderShort | null;
     isLoading: boolean;
@@ -266,6 +269,7 @@ export interface StokeStoreState {
     deleteStock: (stockId: string) => Promise<void>;
     updateStock: (stockId: string, data: Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedStock: (stock: StokeShort | null) => void;
+    createStock: (data: Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string; data?: StokeShort }>;
     selectedStock: StokeShort | null;
     isLoading: boolean;
     error: string | null;
@@ -274,6 +278,7 @@ export interface StokeStoreState {
 export interface WarehouseStoreState {
     warehouses: WarehouseShort[] | null;
     fetchWarehouses: () => Promise<void>;
+    createWarehouse: (data: Omit<WarehouseShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string; data?: WarehouseShort }>;
     deleteWarehouse: (warehouseId: string) => Promise<void>;
     updateWarehouse: (warehouseId: string, data: Omit<WarehouseShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedWarehouse: (warehouse: WarehouseShort | null) => void;

@@ -49,11 +49,10 @@ export const RoleTable = () => {
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.2 }}
                                 onClick={() => setSelectedRole(role)}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all duration-200 ${
-                                    isActive
+                                className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all duration-200 ${isActive
                                         ? 'bg-foreground/10 border-foreground/20'
                                         : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
-                                }`}
+                                    }`}
                             >
                                 {/* Бейдж с первой буквой */}
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 ${color}`}>

@@ -19,6 +19,38 @@ export const useWarehouseStore = create<WarehouseStoreState>()(
                     set({ warehouses: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
                 }
             },
+            createWarehouse: async (data: Omit<WarehouseShort, '_id' | 'createdAt' | 'updatedAt'>) => {
+                try {
+                    set({ isLoading: true, error: null });
+
+                    const res = await fetch('/api/warehouse', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Failed to create warehouse');
+                    }
+
+                    const response = await res.json();
+                    const createdWarehouse = response.data ?? response;
+
+                    set((state) => ({
+                        warehouses: state.warehouses
+                            ? [...state.warehouses, createdWarehouse]
+                            : [createdWarehouse],
+                        isLoading: false,
+                    }));
+
+                    return { success: true, error: undefined };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    set({ error: message, isLoading: false });
+                    return { success: false, error: message };
+                }
+            },
             updateWarehouse: async (warehouseId: string, data: Omit<WarehouseShort, '_id' | 'createdAt' | 'updatedAt'>) => {
                 try {
                     set({ isLoading: true, error: null });

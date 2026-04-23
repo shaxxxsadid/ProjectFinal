@@ -43,7 +43,6 @@ export const StockTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
         return { names, ids };
     }, [stock, products.items]);
 
-
     const activeStock: StokeShort | null = selectedStock ?? null;
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -51,14 +50,17 @@ export const StockTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
         if (!stock) return [];
         return stock.filter((item) =>
             item.batchNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            linkedProducts.names[item.productId].toLowerCase().includes(searchQuery.toLowerCase()));
+            linkedProducts.names[item.productId]?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     }, [stock, searchQuery, linkedProducts.names]);
 
     const totalPages = useMemo(
         () => Math.ceil((filteredStock.length || 0) / ITEMS_PER_PAGE),
         [filteredStock]
     );
+    
     const safePage = Math.min(currentPage, Math.max(1, totalPages));
+    
     const currentStock = useMemo(() => {
         if (!filteredStock) return [];
         const start = (safePage - 1) * ITEMS_PER_PAGE;
@@ -66,32 +68,33 @@ export const StockTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
     }, [filteredStock, safePage]);
 
     return (
-        <div className="w-full justify-between flex flex-col min-h-114 gap-2">
-            <div className="flex flex-col gap-2">
-                <AnimatePresence mode="popLayout">
-                    {currentStock.map((item, index) => {
-                        const isActive = activeStock?._id === item._id;
-                        const color = STOCK_COLORS[index % STOCK_COLORS.length];
-                        const availability = getAvailabilityMeta(item.available, item.quantity);
+        <div className="w-full flex flex-col min-h-114 gap-2">
+            {/* Список с фиксированной высотой и скроллом */}
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                <div className="flex flex-col gap-2 pb-2">
+                    <AnimatePresence mode="popLayout">
+                        {currentStock.map((item, index) => {
+                            const isActive = activeStock?._id === item._id;
+                            const color = STOCK_COLORS[index % STOCK_COLORS.length];
+                            const availability = getAvailabilityMeta(item.available, item.quantity);
 
-                        return (
-                            <motion.div
-                                key={item._id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                onClick={() => setSelectedStock(item)}
-                                className={cn(
-                                    'flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all duration-200',
-                                    isActive
-                                        ? 'bg-foreground/10 border-foreground/20'
-                                        : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
-                                )}
-                            >
-                                {/* Бейдж с первой буквой batch */}
-                                {
-                                    linkedProducts.names[item.productId] ? (
+                            return (
+                                <motion.div
+                                    key={item._id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.2 }}
+                                    onClick={() => setSelectedStock(item)}
+                                    className={cn(
+                                        'flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer border transition-all duration-200',
+                                        isActive
+                                            ? 'bg-foreground/10 border-foreground/20'
+                                            : 'border-transparent hover:bg-foreground/5 hover:border-foreground/10'
+                                    )}
+                                >
+                                    {/* Бейдж с первой буквой batch или аватар продукта */}
+                                    {linkedProducts.names[item.productId] ? (
                                         <ProductAvatar
                                             name={linkedProducts.names[item.productId] ?? item.batchNumber}
                                             productId={item.productId}
@@ -99,51 +102,57 @@ export const StockTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
                                         />
                                     ) : (
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 ${color}`}>
-                                            {item.batchNumber.slice(0, 1).toUpperCase()}
+                                            {item.batchNumber.slice(0, 2).toUpperCase()}
                                         </div>
-                                    )
-                                }
+                                    )}
 
-
-                                <div className="flex flex-col min-w-0 flex-1">
-                                    <span className="font-medium truncate text-sm">
-                                        {linkedProducts.names[item.productId] ?? 'Unknown product'}
-                                    </span>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="font-mono text-[11px] text-foreground/40 truncate">
-                                            {item.batchNumber}
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                        <span className="font-medium truncate text-sm">
+                                            {linkedProducts.names[item.productId] ?? 'Unknown product'}
                                         </span>
-                                        {item.reserved > 0 && (
-                                            <span className="text-[10px] text-rose-400/70 shrink-0">
-                                                · {item.reserved} reserved
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="font-mono text-[11px] text-foreground/40 truncate">
+                                                {item.batchNumber}
                                             </span>
-                                        )}
+                                            {item.reserved > 0 && (
+                                                <span className="text-[10px] text-rose-400/70 shrink-0">
+                                                    · {item.reserved} reserved
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Статус доступности */}
-                                < div className={
-                                    cn(
-                                        'shrink-0 text-[11px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded-full border',
+                                    {/* Статус доступности */}
+                                    <div className={cn(
+                                        'shrink-0 text-[11px] font-semibold tracking-widest uppercase px-2.5 py-1 rounded-full border',
                                         availability.color
                                     )}>
-                                    {availability.label}
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </AnimatePresence >
-            </div >
+                                        {availability.label}
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
+                    
+                    {/* Показываем сообщение если пусто */}
+                    {currentStock.length === 0 && (
+                        <div className="text-center py-8 text-foreground/40 text-sm">
+                            {searchQuery ? 'Ничего не найдено' : 'Нет данных о запасах'}
+                        </div>
+                    )}
+                </div>
+            </div>
 
+            {/* Пагинация всегда внизу */}
             {totalPages > 1 && (
-                <div className="flex justify-center pt-4 border-t border-foreground/10">
+                <div className="flex justify-center pt-3 border-t border-foreground/10 shrink-0">
                     <Pagination
-                        currentPage={currentPage}
+                        currentPage={safePage}
                         totalPages={totalPages}
                         onPageChange={setCurrentPage}
                     />
                 </div>
             )}
-        </div >
+        </div>
     );
 };

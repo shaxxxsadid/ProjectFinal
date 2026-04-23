@@ -4,7 +4,6 @@ import { useMemo, useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pagination } from "@/app/components/ui/pagination";
 import { ProductShort } from "@/types/store.types";
-// ✅ Проверь путь: productsStore (с "s") или productStore — как у тебя реально называется файл
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
 import { cn } from "@/lib/utils";

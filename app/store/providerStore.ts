@@ -73,6 +73,38 @@ export const useProviderStore = create<ProviderStoreState>()(persist(
                 }));
             }
         },
+        createProvider: async (data: Omit<ProviderShort, '_id' | 'createdAt' | 'updatedAt'>) => {
+            try {
+                set({ isLoading: true, error: null });
+
+                const res = await fetch(`/api/providers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Failed to create provider');
+                }
+
+                const response = await res.json();
+                const createdProvider = response.data ?? response;
+
+                set((state) => ({
+                    providers: state.providers
+                        ? [...state.providers, createdProvider]
+                        : [createdProvider],
+                    isLoading: false,
+                }));
+
+                return { success: true, error: undefined };
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                set({ error: message, isLoading: false });
+                return { success: false, error: message };
+            }
+        },
         updateProvider: async (
             providerId: string,
             data: Omit<ProviderShort, '_id' | 'createdAt' | 'updatedAt'>
