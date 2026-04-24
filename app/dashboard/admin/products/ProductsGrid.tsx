@@ -15,6 +15,7 @@ export const ProductGrid = () => {
         setProductPage,
         setSelectedProduct,
         selectedProduct,
+        avatarVersions,
     } = useProductsStore();
 
     const { filteredItems, pagination } = products;
@@ -62,6 +63,7 @@ export const ProductGrid = () => {
                                         name={product.name}
                                         productId={product._id}
                                         size="lg"
+                                        avatarVersion={avatarVersions[String(product._id)] ?? 0}
                                     />
                                 </div>
 

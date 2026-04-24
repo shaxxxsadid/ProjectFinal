@@ -3,14 +3,17 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { fetchAvatar } from '@/app/lib/avatar';
+import Image from 'next/image';
 
 const ProductAvatar = ({
   name,
   productId,
+  avatarVersion,
   size = 'lg'
 }: {
   name: string;
   productId?: string;
+  avatarVersion?: number;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }) => {
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -22,21 +25,31 @@ const ProductAvatar = ({
     xl: 'w-24 h-24 text-xl'
   };
 
+  const sizeMap = {
+    sm: { w: 48, h: 48 },
+    md: { w: 64, h: 64 },
+    lg: { w: 80, h: 80 },
+    xl: { w: 96, h: 96 }
+  } as const;
+
   useEffect(() => {
     if (!productId) return;
-
     let mounted = true;
-    fetchAvatar(productId, 'product', 'id').then(res => {
+
+    fetchAvatar(productId, 'product', 'id', avatarVersion).then(res => {
       if (mounted) setAvatar(res.success && res.data ? res.data : null);
     });
 
     return () => { mounted = false; };
-  }, [productId]);
+  }, [productId, avatarVersion]);
 
   if (avatar) {
+    const { w, h } = sizeMap[size];
     return (
-      <img// eslint-disable-line
+      <Image
         src={avatar}
+        width={w}
+        height={h}
         alt={name}
         className={cn('rounded-xl object-cover border border-border/50', sizeClasses[size])}
         onError={e => {

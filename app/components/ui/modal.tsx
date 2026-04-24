@@ -16,13 +16,20 @@ export interface FieldOption {
 export interface FieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'image-url' | 'checkbox';
+  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'image-url' | 'checkbox' | 'hidden' | 'file' | 'group';
   required?: boolean;
   autoComplete?: string;
   initialValue?: string;
   placeholder?: string;
   options?: FieldOption[];
   meta?: Record<string, string>;
+  min?: string;
+  max?: string;
+  step?: string;
+  accept?: string;
+  onFileSelect?: (file: File | null, fieldName: string) => Promise<string | void>;
+  children?: FieldConfig[];
+  gridCols?: number;
 }
 
 export interface FormModalProps {
@@ -122,6 +129,102 @@ const FloatingField = ({
   );
 };
 
+// В том же файле, после TextareaField:
+
+const FileField = ({
+  label, value, onChange, required, placeholder, accept = 'image/*', meta,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  required?: boolean; placeholder?: string; accept?: string;
+  meta?: Record<string, string>;
+}) => {
+  const [preview, setPreview] = useState<string>(value || '');
+  const [fileName, setFileName] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setError('');
+
+    if (!file) {
+      setPreview('');
+      setFileName('');
+      onChange('');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Only image files are allowed');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB');
+      e.target.value = '';
+      return;
+    }
+
+    setFileName(file.name);
+    setPreview(URL.createObjectURL(file));
+
+    // Конвертируем в Base64 для передачи в JSON
+    const reader = new FileReader();
+    reader.onload = () => {
+      onChange(reader.result as string);
+    };
+    reader.onerror = () => setError('Failed to read file');
+    reader.readAsDataURL(file);
+  };
+
+  // Очистка blob-URL при размонтировании или смене файла
+  useEffect(() => {
+    return () => {
+      if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  const initials = meta?.fallbackName
+    ? meta.fallbackName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+    : '📦';
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-foreground">
+        {label}{required && <span className="text-destructive ml-0.5">*</span>}
+      </label>
+
+      <div className="relative w-32 h-32 rounded-xl overflow-hidden border-2 border-border/50 bg-muted/30 flex items-center justify-center">
+        {preview ? (
+          <Image src={preview} alt="Preview" fill className="object-cover" sizes="128px"
+            onError={() => { setPreview(''); setError('Invalid image'); }}
+          />
+        ) : (
+          <div className="text-3xl text-muted-foreground/50">{initials}</div>
+        )}
+        {preview && (
+          <button type="button" onClick={() => { setPreview(''); setFileName(''); onChange(''); }}
+            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-white flex items-center justify-center text-xs hover:bg-destructive/90">
+            ×
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <label className="flex-1 cursor-pointer">
+          <span className="sr-only">Choose file</span>
+          <input type="file" accept={accept} onChange={handleFileChange}
+            className="block w-full text-sm text-foreground/70 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
+          />
+        </label>
+        {fileName && <span className="text-xs text-muted-foreground truncate max-w-[120px]">{fileName}</span>}
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {!preview && !error && placeholder && <p className="text-xs text-muted-foreground/70">{placeholder}</p>}
+    </div>
+  );
+};
+
 const ImageUrlField = ({
   label, value, onChange, required, placeholder, fallbackName
 }: {
@@ -166,7 +269,7 @@ const ImageUrlField = ({
               alt="Avatar preview"
               fill
               sizes="100px"
-              className="rounded-full object-cover shrink-0" 
+              className="rounded-full object-cover shrink-0"
               onError={() => setImgError(true)}
             />
           ) : (
@@ -471,6 +574,47 @@ export const FormModal = ({
                         required={field.required}
                         placeholder={field.placeholder}
                       />
+                    ) : field.type === 'file' ? (  // 🔧 Добавляем ветку для file
+                      <FileField
+                        label={field.label}
+                        value={formData[field.name] || ''}
+                        onChange={(v) => setFormData(prev => ({ ...prev, [field.name]: v }))}
+                        required={field.required}
+                        placeholder={field.placeholder}
+                        accept={field.accept}
+                        meta={field.meta}
+                      />
+                    ) : field.type === 'group' ? (
+                      <div className="space-y-3">
+                        {field.label && <label className="block text-sm font-medium text-foreground">{field.label}</label>}
+                        <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${field.gridCols || 2}, minmax(0, 1fr))` }}>
+                          {field.children?.map((child, idx) => (
+                            <div key={child.name}>
+                              {child.type === 'checkbox' ? (
+                                <label className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={formData[child.name] === 'true' || child.initialValue === 'true' }
+                                    onChange={(e) => setFormData(prev => ({ ...prev, [child.name]: e.target.checked ? 'true' : 'false' }))}
+                                    className="w-4 h-4 rounded border-border/50 text-primary focus:ring-primary/50"
+                                  />
+                                  <span className="text-sm text-foreground">{child.label}</span>
+                                </label>
+                              ) : (
+                                <FloatingField
+                                  label={child.label}
+                                  // Если в formData нет значения, берём initialValue из конфига
+                                  value={formData[child.name] ?? child.initialValue ?? ''}
+                                  onChange={(v) => setFormData(prev => ({ ...prev, [child.name]: v }))}
+                                  type={child.type}
+                                  required={child.required}
+                                  placeholder={child.placeholder}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
                       <FloatingField
                         label={field.label}
@@ -481,7 +625,8 @@ export const FormModal = ({
                         required={field.required}
                         placeholder={field.placeholder}
                       />
-                    )}
+                    )
+                    }
                   </motion.div>
                 ))}
 

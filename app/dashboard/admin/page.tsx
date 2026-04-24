@@ -34,7 +34,7 @@ import { WarehouseDetails } from "./warehouse/WarehouseDetails";
 import { useDebounce } from "@/app/hooks/debounce";
 import { AnimatePresence, motion } from "framer-motion";
 import { UserCrudModal } from "@/app/components/ui/UserCrudModal";
-import { BusinessProfileShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
+import { BusinessProfileShort, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
 import { toast } from "react-hot-toast";
 import { BusinessProfileCrudModal } from "@/app/components/ui/admin/modal/BusinessCrudModal";
 import { CrudProviderModal } from "@/app/components/ui/admin/modal/ProviderCrudModal";
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
   const { businessProfiles, fetchBusinessProfiles, createBusinessProfile } = useBusinessProfileStore();
   const { account, fetchAccount } = useAccountStore();
   const { providers, fetchProviders, createProvider } = useProviderStore();
-  const { products, fetchProducts, searchProducts } = useProductsStore();
+  const { products, fetchProducts, searchProducts, createProduct } = useProductsStore();
   const { stock, fetchStock, createStock } = useStokeStore();
   const { warehouses, fetchWarehouses, createWarehouse } = useWarehouseStore();
   const [activeTab, setActiveTab] = useState('tab1');
@@ -223,14 +223,14 @@ export default function AdminDashboard() {
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
             onSubmit={async (data) => {
-              // const res = await createProduct(data);
-              // if (res.success) {
-              //   toast.success('Продукт создан');
-              //   setIsCreateOpen(false);
-              // } else {
-              //   toast.error(res.error || 'Ошибка создания');
-              // }
-              return { success: true, error: undefined };
+              const res = await createProduct(data as Omit<ProductShort, 'createdAt' | 'updatedAt'>);
+              if (res.success) {
+                toast.success('Продукт создан');
+                setIsCreateOpen(false);
+              } else {
+                toast.error(res.error || 'Ошибка создания');
+              }
+              return res;
             }}
             mode="create"
           />
@@ -312,8 +312,7 @@ export default function AdminDashboard() {
         {/* 2. ЦЕНТРАЛЬНАЯ КОЛОНКА */}
         <div className={cn(
           "bg-background border border-foreground/20 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl min-w-0",
-          activeTab === 'tab6' ? "h-[80%]" : "h-[70%]",
-          activeTab === 'tab7' ? "h-[83%]" : "h-[70%]",
+          activeTab === 'tab6' || activeTab === 'tab7' ? "h-[83%]" : "h-[70%]",
         )}>
           {/* Заголовок + кнопка добавления */}
           <div className="relative flex items-center justify-center mb-4">

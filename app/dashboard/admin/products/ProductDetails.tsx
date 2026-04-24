@@ -5,9 +5,10 @@ import { ProductShort } from "@/types/store.types";
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
 import toast from "react-hot-toast";
+import { CrudProductModal } from "@/app/components/ui/admin/modal/ProductCrudModal";
 
 export const ProductDetails = () => {
-    const { selectedProduct, setSelectedProduct, deleteProduct } = useProductsStore();
+    const { selectedProduct, setSelectedProduct, deleteProduct, updateProduct, avatarVersions } = useProductsStore();
     const activeProduct: ProductShort | null = selectedProduct ?? null;
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -16,7 +17,7 @@ export const ProductDetails = () => {
     }
 
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
             <motion.div
                 key="details-panel"
                 initial={{ opacity: 0, x: 20, scale: 0.95 }}
@@ -40,6 +41,7 @@ export const ProductDetails = () => {
                         <ProductAvatar
                             name={activeProduct.name}
                             productId={activeProduct._id}
+                            avatarVersion={avatarVersions[String(activeProduct._id)] ?? 0}
                             size="lg"
                         />
                     </div>
@@ -71,13 +73,13 @@ export const ProductDetails = () => {
                 {/* Info Fields */}
                 <div className="space-y-1 pt-2">
                     {[
-                        { label: 'Product ID',  value: activeProduct._id.toString() },
-                        { label: 'Category',    value: activeProduct.categoryId || 'Unknown' },
-                        { label: 'Price',       value: activeProduct.price ? `${activeProduct.price.toLocaleString()} ₽` : 'Unknown' },
-                        { label: 'Dimensions',  value: (activeProduct.length && activeProduct.width && activeProduct.height) ? `${activeProduct.length} × ${activeProduct.width} × ${activeProduct.height} cm` : '—' },
-                        { label: 'Weight',      value: activeProduct.weight ? `${activeProduct.weight} kg` : '—' },
-                        { label: 'Created At',  value: activeProduct.createdAt ? new Date(activeProduct.createdAt).toLocaleString() : '—' },
-                        { label: 'Updated At',  value: activeProduct.updatedAt ? new Date(activeProduct.updatedAt).toLocaleString() : '—' },
+                        { label: 'Product ID', value: activeProduct._id.toString() },
+                        { label: 'Category', value: activeProduct.categoryId || 'Unknown' },
+                        { label: 'Price', value: activeProduct.price ? `${activeProduct.price.toLocaleString()} ₽` : 'Unknown' },
+                        { label: 'Dimensions', value: (activeProduct.length && activeProduct.width && activeProduct.height) ? `${activeProduct.length} × ${activeProduct.width} × ${activeProduct.height} cm` : '—' },
+                        { label: 'Weight', value: activeProduct.weight ? `${activeProduct.weight} kg` : '—' },
+                        { label: 'Created At', value: activeProduct.createdAt ? new Date(activeProduct.createdAt).toLocaleString() : '—' },
+                        { label: 'Updated At', value: activeProduct.updatedAt ? new Date(activeProduct.updatedAt).toLocaleString() : '—' },
                     ].map(({ label, value }) => (
                         <div key={label} className="flex items-center justify-between gap-4 py-2.5 border-b border-foreground/5 last:border-0">
                             <span className="text-xs uppercase text-muted-foreground font-bold tracking-wider shrink-0">{label}</span>
@@ -114,6 +116,37 @@ export const ProductDetails = () => {
                     </button>
                 </div>
             </motion.div>
+            <CrudProductModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                initialValues={activeProduct}
+                mode="edit"
+                onSubmit={async (data) => {
+                    if (!activeProduct?._id) {
+                        return { success: false, error: 'Product ID is missing' };
+                    }
+
+                    try {
+                        const res = await updateProduct(
+                            activeProduct._id,
+                            data as Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>
+                        );
+
+                        if (!res.success) {
+                            throw new Error(res.error || 'Failed to update product');
+                        }
+
+                        toast.success('Product updated successfully');
+                        setIsModalOpen(false);
+                        return { success: true };
+
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : 'Unknown error';
+                        toast.error(message);
+                        return { success: false, error: message };
+                    }
+                }}
+            />
         </AnimatePresence>
     );
 };

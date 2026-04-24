@@ -1,7 +1,6 @@
 import { ProductShort } from '@/types/store.types';
 import { create } from 'zustand';
 
-
 export interface PaginationState {
     page: number;
     limit: number;
@@ -21,6 +20,9 @@ interface ProductsStore {
     productIsLoading: boolean;
     products: DataListState<ProductShort>;
     selectedProduct: ProductShort | null;
+    avatarVersions: Record<string, number>; // ✅ исправлено
+    createProduct: (product: ProductShort) => Promise<{ success: boolean; error?: string; data?: ProductShort }>;
+    updateProduct: (productId: string, data: Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
     setSelectedProduct: (product: ProductShort | null) => void;
     setProducts: (items: ProductShort[], total: number) => void;
     setProductsLoading: (loading: boolean) => void;
@@ -28,10 +30,9 @@ interface ProductsStore {
     searchProducts: (query: string) => void;
     setProductPage: (page: number) => void;
     fetchProducts: () => Promise<void>;
-    deleteProduct: (_id: string) => Promise<void>; // ← добавь
+    deleteProduct: (_id: string) => Promise<void>;
 }
 
-// 🔹 Вспомогательная функция фильтрации (простая, без зависимостей)
 const filterItems = <T extends Record<string, any>>(// eslint-disable-line
     items: T[],
     query: string,
@@ -42,12 +43,8 @@ const filterItems = <T extends Record<string, any>>(// eslint-disable-line
     return items.filter((item) =>
         fields.some((field) => {
             const value = item[field];
-            if (typeof value === 'string') {
-                return value.toLowerCase().includes(lowerQuery);
-            }
-            if (typeof value === 'number') {
-                return value.toString().includes(lowerQuery);
-            }
+            if (typeof value === 'string') return value.toLowerCase().includes(lowerQuery);
+            if (typeof value === 'number') return value.toString().includes(lowerQuery);
             return false;
         })
     );
@@ -72,6 +69,8 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
     productIsLoading: false,
     products: initialProductsState,
     selectedProduct: null,
+    avatarVersions: {}, // ✅ исправлено
+
     setSelectedProduct: (product) => set({ selectedProduct: product }),
 
     setProducts: (items, total) =>
@@ -91,26 +90,39 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
         })),
 
     setProductsLoading: (loading) => set({ productIsLoading: loading }),
+    setProductsError: (error) => set((state) => ({ products: { ...state.products, error } })),
 
-    setProductsError: (error) =>
-        set((state) => ({
-            products: { ...state.products, error },
-        })),
+    createProduct: async (product) => {
+        try {
+            set({ productIsLoading: true, products: { ...get().products, error: null } });
+            const res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product),
+            });
+            const result = await res.json();
+            if (!res.ok || !result.success) throw new Error(result.error || 'Failed to create product');
+            await get().fetchProducts();
+            return { success: true, error: undefined };
+        } catch (error) {
+            set({
+                productIsLoading: false,
+                products: { ...get().products, error: error instanceof Error ? error.message : 'Unknown error' },
+            });
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    },
 
     searchProducts: (query) =>
         set((state) => {
-            const { items } = state.products;
-
-            // ✅ Если запрос пустой — показываем все товары
             const filtered = query.trim()
-                ? filterItems(items, query, ['name', 'sku'] as (keyof ProductShort)[])
-                : items;
-
+                ? filterItems(state.products.items, query, ['name', 'sku'] as (keyof ProductShort)[])
+                : state.products.items;
             return {
                 products: {
                     ...state.products,
                     searchQuery: query,
-                    filteredItems: filtered, // ✅ Важно: не items, а filtered
+                    filteredItems: filtered,
                     pagination: { ...state.products.pagination, page: 1 },
                 },
             };
@@ -126,27 +138,14 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
 
     fetchProducts: async () => {
         const { setProductsLoading, setProducts, setProductsError } = get();
-
         try {
             setProductsLoading(true);
             setProductsError(null);
-
             const res = await fetch('/api/products');
             if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-
             const data = await res.json();
-
-            // Поддержка разных форматов ответа: массив или { items, total }
-            const items: ProductShort[] = Array.isArray(data)
-                ? data
-                : Array.isArray(data?.items)
-                    ? data.items
-                    : [];
-
-            const total = typeof data?.total === 'number'
-                ? data.total
-                : items.length;
-
+            const items: ProductShort[] = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+            const total = typeof data?.total === 'number' ? data.total : items.length;
             setProducts(items, total);
         } catch (err) {
             console.error('Failed to fetch products:', err);
@@ -155,7 +154,8 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
             setProductsLoading(false);
         }
     },
-    updateProduct: async (productId: string, data: Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>) => {
+
+    updateProduct: async (productId, data) => {
         try {
             set({ productIsLoading: true, products: { ...get().products, error: null } });
 
@@ -172,8 +172,6 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
 
             const response = await res.json();
             const updatedProduct = response.data ?? response;
-
-            // ✅ Нормализуем ID для сравнения
             const normalizedId = String(productId);
 
             set((state) => {
@@ -191,9 +189,12 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
                     products: { ...state.products, items, filteredItems },
                     selectedProduct: updatedSelected,
                     productIsLoading: false,
+                    avatarVersions: {
+                        ...state.avatarVersions,
+                        [normalizedId]: (state.avatarVersions[normalizedId] ?? 0) + 1,
+                    },
                 };
             });
-
             return { success: true };
         } catch (error) {
             set((state) => ({
@@ -203,24 +204,19 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
         }
     },
-    deleteProduct: async (_id: string) => {
-        const { setProductsLoading, setProductsError, fetchProducts } = get();
+
+    deleteProduct: async (_id) => {
+        const { setProductsLoading, setProductsError } = get();
         try {
             setProductsLoading(true);
             setProductsError(null);
-
             const res = await fetch('/api/products', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ _id }),
             });
-
             const result = await res.json();
-            if (!res.ok || !result.success) {
-                throw new Error(result.error || 'Failed to delete product');
-            }
-
-            // Убираем из локального стейта сразу — не ждём рефетча
+            if (!res.ok || !result.success) throw new Error(result.error || 'Failed to delete product');
             set((state) => {
                 const items = state.products.items.filter(p => p._id !== _id);
                 const filteredItems = state.products.filteredItems.filter(p => p._id !== _id);

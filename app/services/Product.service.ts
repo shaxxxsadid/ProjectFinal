@@ -30,22 +30,23 @@ class ProductService {
         }
     }
 
-    async createProduct(productData: { 
-        sku: string; 
-        name: string; 
-        categoryId: string; 
-        price: number; length?: 
-        number; width?: number; 
-        height?: number; 
-        weight?: number; 
-        loadCapacity?: number; 
+    async createProduct(productData: {
+        sku: string;
+        name: string;
+        categoryId: string;
+        price: number; length?:
+        number; width?: number;
+        height?: number;
+        weight?: number;
+        loadCapacity?: number;
         isHeatTreated?: boolean;
         avatar?: {
             fileName: string;
             type: string;
             data: Buffer;
         };
-        isIPPC_Certified?: boolean }) {
+        isIPPC_Certified?: boolean
+    }) {
         try {
             const newProduct = await Products.create(productData);
             return newProduct;
@@ -55,8 +56,8 @@ class ProductService {
         }
     }
 
-    async updateProduct(_id: string, updateData: { 
-        sku?: string; 
+    async updateProduct(_id: string, updateData: {
+        sku?: string;
         name?: string;
         categoryId?: string;
         price?: number;
@@ -66,14 +67,43 @@ class ProductService {
         weight?: number;
         loadCapacity?: number;
         isHeatTreated?: boolean;
-        isIPPC_Certified?: boolean; 
+        isIPPC_Certified?: boolean;
+        avatarUrl?: string; // Приходит с фронтенда как Base64
     }) {
         try {
-            const updatedProduct = await Products.findByIdAndUpdate(_id, { ...updateData, updatedAt: new Date() }, { new: true });
+            const updatePayload: Record<string, unknown> = {
+                ...updateData,
+                updatedAt: new Date()
+            };
+
+            // 🔥 Конвертируем Base64 в структуру avatar
+            if (updateData.avatarUrl?.startsWith('data:image')) {
+                const [header, base64Data] = updateData.avatarUrl.split(',');
+                const mimeType = header?.match(/data:(.*?);base64/)?.[1] || 'image/png';
+                const fileName = `product-${_id}-${Date.now()}.${mimeType.split('/')[1]}`;
+
+                // Создаём правильную структуру для MongoDB
+                updatePayload.avatar = {
+                    fileName,
+                    type: mimeType,
+                    data: Buffer.from(base64Data, 'base64'),
+                };
+
+                // Удаляем avatarUrl из payload — его нет в схеме
+                delete updatePayload.avatarUrl;
+            }
+
+            const updatedProduct = await Products.findByIdAndUpdate(
+                _id,
+                updatePayload,
+                { new: true }
+            );
+
             if (!updatedProduct) {
                 logger.warn(`Product with _id ${_id} not found for update`);
                 return null;
             }
+
             return updatedProduct;
         } catch (error) {
             logger.error(`Failed to update product: ${error instanceof Error ? error.message : error}`);

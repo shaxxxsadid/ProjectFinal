@@ -15,7 +15,7 @@ interface ProductUpdateData {
   loadCapacity?: number;
   isHeatTreated?: boolean;
   isIPPC_Certified?: boolean;
-  avatarUrl?: string; // 👈 упрощённо: ссылка на изображение
+  avatarUrl?: string; // Придёт как Base64 строка
 }
 
 interface CrudProductModalProps {
@@ -27,125 +27,68 @@ interface CrudProductModalProps {
 }
 
 export const CrudProductModal = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  mode = 'create',
-  initialValues,
+  isOpen, onClose, onSubmit, mode = 'create', initialValues,
 }: CrudProductModalProps) => {
   const fields: FieldConfig[] = [
     {
-      name: 'name',
-      label: 'Product name',
-      type: 'text',
-      required: mode === 'create',
-      initialValue: initialValues?.name || '',
-      placeholder: 'Enter product name',
-    },
-    {
-      name: 'sku',
-      label: 'SKU',
-      type: 'text',
-      required: mode === 'create',
-      initialValue: initialValues?.sku || '',
-      placeholder: 'e.g. PAL-EU-001',
-    },
-    {
-      name: 'categoryId',
-      label: 'Category ID',
-      type: 'text',
-      required: false,
-      initialValue: initialValues?.categoryId || '',
-      placeholder: 'Enter category ID',
-    },
-    {
-      name: 'length',
-      label: 'Length (mm)',
-      type: 'number',
-      required: false,
-      initialValue: initialValues?.length?.toString() || '',
-      placeholder: '1200',
-    },
-    {
-      name: 'width',
-      label: 'Width (mm)',
-      type: 'number',
-      required: false,
-      initialValue: initialValues?.width?.toString() || '',
-      placeholder: '800',
-    },
-    {
-      name: 'height',
-      label: 'Height (mm)',
-      type: 'number',
-      required: false,
-      initialValue: initialValues?.height?.toString() || '',
-      placeholder: '144',
-    },
-    {
-      name: 'weight',
-      label: 'Weight (kg)',
-      type: 'number',
-      required: false,
-      initialValue: initialValues?.weight?.toString() || '',
-      placeholder: '25',
-    },
-    {
-      name: 'isHeatTreated',
-      label: 'Heat treated',
-      type: 'checkbox',
-      required: false,
-      initialValue: initialValues?.isHeatTreated ? 'true' : '',
-    },
-    {
-      name: 'isIPPC_Certified',
-      label: 'IPPC certified',
-      type: 'checkbox',
-      required: false,
-      initialValue: initialValues?.isIPPC_Certified ? 'true' : '',
-    },
-    {
       name: 'avatarUrl',
-      label: 'Image URL',
-      type: 'text',
-      required: false,
-      initialValue: '', // 👈 avatar — сложный объект, упрощаем до URL
-      placeholder: 'https://example.com/image.jpg',
+      label: 'Product image',
+      type: 'file',
+      accept: 'image/png,image/jpeg,image/webp',
+      placeholder: 'PNG, JPG or WebP up to 5MB',
+      meta: { fallbackName: initialValues?.name || 'Product' },
+    },
+
+    { name: 'name', label: 'Product name', type: 'text', required: mode === 'create', initialValue: initialValues?.name || '', placeholder: 'Enter product name' },
+    { name: 'sku', label: 'SKU', type: 'text', required: mode === 'create', initialValue: initialValues?.sku || '', placeholder: 'e.g. PAL-EU-001' },
+    { name: 'categoryId', label: 'Category ID', type: 'text', initialValue: initialValues?.categoryId || '', placeholder: 'Enter category ID' },
+    
+    // size width x height
+    {
+      name: 'size',
+      label: 'Size',
+      type: 'group',
+      gridCols: 3,
+      children: [
+        { name: 'width', label: 'Width (mm)', type: 'number', initialValue: initialValues?.width?.toString() || '', placeholder: '800', min: '0', step: '0.1' },
+        { name: 'height', label: 'Height (mm)', type: 'number', initialValue: initialValues?.height?.toString() || '', placeholder: '144', min: '0', step: '0.1' },
+        { name: 'length', label: 'Length (mm)', type: 'number', initialValue: initialValues?.length?.toString() || '', placeholder: '1200', min: '0', step: '0.1' },
+      ],
+    },
+    
+    { name: 'weight', label: 'Weight (kg)', type: 'number', initialValue: initialValues?.weight?.toString() || '', placeholder: '25', min: '0', step: '0.1' },
+
+    {
+      name: 'certifications',
+      label: 'Certifications',
+      type: 'group',
+      gridCols: 2,
+      children: [
+        { name: 'isHeatTreated', label: 'Heat treated', type: 'checkbox', initialValue: initialValues?.isHeatTreated ? 'true' : '' },
+        { name: 'isIPPC_Certified', label: 'IPPC certified', type: 'checkbox', initialValue: initialValues?.isIPPC_Certified ? 'true' : '' },
+      ],
     },
   ];
 
+
   const handleFormSubmit = async (data: Record<string, string>) => {
-    // В режиме edit отправляем только заполненные поля
     const filtered = mode === 'edit'
-      ? Object.fromEntries(
-          Object.entries(data).filter(([, v]) => {
-            // Для checkbox: 'true'/'false' — валидные значения
-            if (['isHeatTreated', 'isIPPC_Certified'].includes(data.name)) {
-              return true;
-            }
-            return v.trim() !== '';
-          })
-        )
+      ? Object.fromEntries(Object.entries(data).filter(([, v]) => {
+        if (['isHeatTreated', 'isIPPC_Certified'].includes(data.name)) return true;
+        return v.trim() !== '';
+      }))
       : data;
 
-    // Конвертируем типы
     const typedData: ProductUpdateData = { ...filtered };
 
-    // Числовые поля
-    const numberFields = ['length', 'width', 'height', 'weight', 'loadCapacity'] as const;
-    numberFields.forEach((field) => {
+    ['length', 'width', 'height', 'weight'].forEach((field) => {
       if (filtered[field] && filtered[field].trim() !== '') {
-        typedData[field] = parseFloat(filtered[field]);
+        typedData[field as keyof ProductUpdateData] = parseFloat(filtered[field]) as never;
       }
     });
 
-    // Boolean поля
-    if (filtered.isHeatTreated !== undefined) {
-      typedData.isHeatTreated = filtered.isHeatTreated === 'true';
-    }
-    if (filtered.isIPPC_Certified !== undefined) {
-      typedData.isIPPC_Certified = filtered.isIPPC_Certified === 'true';
-    }
+    if (filtered.isHeatTreated !== undefined) typedData.isHeatTreated = filtered.isHeatTreated === 'true';
+    if (filtered.isIPPC_Certified !== undefined) typedData.isIPPC_Certified = filtered.isIPPC_Certified === 'true';
 
     return onSubmit(typedData);
   };
@@ -153,18 +96,11 @@ export const CrudProductModal = ({
   return (
     <FormModal
       key={initialValues ? JSON.stringify(initialValues) : 'new'}
-      isOpen={isOpen}
-      onClose={onClose}
+      isOpen={isOpen} onClose={onClose}
       title={mode === 'create' ? 'Create product' : 'Edit product'}
-      description={
-        mode === 'edit'
-          ? 'Leave fields empty to keep current values'
-          : 'Fill in product details'
-      }
-      fields={fields}
-      onSubmit={handleFormSubmit}
-      submitLabel={mode === 'create' ? 'Create' : 'Save changes'}
-      mode={mode}
+      description={mode === 'edit' ? 'Leave fields empty to keep current values' : 'Fill in product details'}
+      fields={fields} onSubmit={handleFormSubmit}
+      submitLabel={mode === 'create' ? 'Create' : 'Save changes'} mode={mode}
     />
   );
 };
