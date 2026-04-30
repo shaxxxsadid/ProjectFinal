@@ -7,18 +7,18 @@ export interface IAvatar {
 }
 
 // ========== ACCOUNTS ==========
-export interface IAccount {
-    _id?: Types.ObjectId;
-    userId?: Types.ObjectId;
-    type?: "oauth" | "credential | credential & oauth";
-    providerId?: {
-        id: Types.ObjectId;
-        providerAccountId: string;
-        _id: Types.ObjectId;
-    };
-    avatarUrl?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
+export interface AccountDbPopulated {
+  _id: Types.ObjectId;
+  userId: Types.ObjectId;
+  type: 'oauth' | 'credential';
+  providerId: {
+    _id: Types.ObjectId;
+    name: string;
+  };
+  providerAccountId?: string;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IUpdateAccount {

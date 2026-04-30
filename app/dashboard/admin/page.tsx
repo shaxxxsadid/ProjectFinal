@@ -86,7 +86,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user) fetchUser();
     if (!roles) fetchRoles();
-    if (!businessProfiles) fetchBusinessProfiles();
+    if (!businessProfiles || businessProfiles.length === 0) fetchBusinessProfiles();
     if (!account) fetchAccount();
     if (!providers) fetchProviders();
     if (products.items.length === 0) fetchProducts();

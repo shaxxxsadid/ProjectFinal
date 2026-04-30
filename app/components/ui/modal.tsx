@@ -217,7 +217,7 @@ const FileField = ({
             className="block w-full text-sm text-foreground/70 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
           />
         </label>
-        {fileName && <span className="text-xs text-muted-foreground truncate max-w-[120px]">{fileName}</span>}
+        {fileName && <span className="text-xs text-muted-foreground truncate max-w-30">{fileName}</span>}
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {!preview && !error && placeholder && <p className="text-xs text-muted-foreground/70">{placeholder}</p>}

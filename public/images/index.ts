@@ -16,7 +16,8 @@ import UserPlaceholderWhite from "@/public/user-placeholder-white.svg";
 import UserPlaceholderBlack from "@/public/user-placeholder-black.svg";
 import LockWhite from "@/public/lock-white.svg";
 import LockBlack from "@/public/lock-black.svg";
-
+import DashboardWhite from "@/public/dashboard-white.svg";
+import DashboardBlack from "@/public/dashboard-black.svg";
 export const Images = {
     dark: {
         menu: MenuBlack,
@@ -28,6 +29,7 @@ export const Images = {
         panel: PanelWhite,
         admin: LockWhite,
         userPlaceholder: UserPlaceholderWhite,
+        dashboard: DashboardWhite
     },
     light: {
         menu: MenuWhite,
@@ -39,6 +41,7 @@ export const Images = {
         panel: PanelBlack,
         admin: LockBlack,
         userPlaceholder: UserPlaceholderBlack,
+        dashboard: DashboardBlack
     }
 } as const;
 

@@ -41,19 +41,22 @@ export interface ProductsState {
 }
 
 export interface AccountShort {
+  _id: string;
+  userId: string;
+  type: 'oauth' | 'credential';
+  
+  // После .populate() providerId становится объектом, а не строкой
+  providerId: {
     _id: string;
-    userId: string;
-    businessProfileId: string;
-    type: string;
-    providerId: {
-        _id: string;
-        id: string;
-        providerAccountId: string;
-    };
-    avatarUrl?: string;
-    createdAt: string;
-    updatedAt: string;
-
+    name: string; // 'google', 'github', 'yandex', 'credentials'
+  };
+  
+  // Перенесён на верхний уровень (как в новой схеме Mongoose)
+  providerAccountId?: string; 
+  
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BusinessProfileShort {

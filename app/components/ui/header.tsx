@@ -172,21 +172,34 @@ export default function Header() {
                             Каталог
                         </TXT>
                     </NavItem>
-
-                    {/* Админ */}
-                    <NavItem onClick={() => router.push("/dashboard/admin")}>
-                        <Button
-                            {...iconBtn({
-                                darkIcon: Images.dark.admin.src,
-                                lightIcon: Images.light.admin.src,
-                            })}
-                            onClick={() => router.push("/dashboard/admin")}
-                        />
-                        <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
-                            Админ
-                        </TXT>
-                    </NavItem>
-
+                    {(session?.user.role === "admin" || session?.user.role === "manager") && (
+                        <NavItem onClick={() => router.push("/dashboard/admin")}>
+                            <Button
+                                {...iconBtn({
+                                    darkIcon: Images.dark.admin.src,
+                                    lightIcon: Images.light.admin.src,
+                                })}
+                                onClick={() => router.push("/dashboard/admin")}
+                            />
+                            <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
+                                Админ
+                            </TXT>
+                        </NavItem>
+                    )}
+                    {session?.user.role === "admin" && (
+                        <NavItem onClick={() => router.push("/dashboard")}>
+                            <Button
+                                {...iconBtn({
+                                    darkIcon: Images.dark.dashboard.src,
+                                    lightIcon: Images.light.dashboard.src,
+                                })}
+                                onClick={() => router.push("/dashboard")}
+                            />
+                            <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
+                                ПУ
+                            </TXT>
+                        </NavItem>
+                    )}
                     {/* Профиль */}
                     <NavItem onClick={() => router.push("/pages/profile")}>
                         {status === "unauthenticated" ?
@@ -198,13 +211,12 @@ export default function Header() {
                                 onClick={() => router.push("/login")}
                             />
                             :
-                            // ✅ Приоритет: БД → Провайдер → Инициалы
-                            <UserAvatar 
-                                name={session?.user?.name || "user"} 
-                                email={session?.user?.email as string} 
-                                size="sm" 
+                            <UserAvatar
+                                name={session?.user?.name || "user"}
+                                email={session?.user?.email as string}
+                                size="sm"
                                 avatarVersion={avatarVersions?.[session?.user?.email as string]}
-                                fallbackImage={session?.user?.image} // Провайдер как fallback
+                                fallbackImage={session?.user?.image as string}
                             />
                         }
 

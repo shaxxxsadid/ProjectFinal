@@ -16,25 +16,16 @@ export const useBusinessProfileStore = create<BusinessProfileStoreState>()(
         try {
           set({ isLoading: true, error: null });
           const res = await fetch('/api/business');
-
-          const result = await res.json();
-
-          if (!res.ok || !result.success) {
-            throw new Error(result.error || 'Failed to fetch business profiles');
-          }
-
-          const businessProfiles = Array.isArray(result.data) ? result.data : [];
-
-          set({ businessProfiles, isLoading: false, error: null });
-          return businessProfiles;
-
+          if (!res.ok) throw new Error('Failed to fetch business profiles');
+          const data = await res.json();
+          const businessProfiles = Array.isArray(data) ? data : data.data ?? [];
+          set({ businessProfiles, isLoading: false });
         } catch (error) {
           set({
             businessProfiles: [],
             error: error instanceof Error ? error.message : 'Unknown error',
-            isLoading: false
+            isLoading: false,
           });
-          return [];
         }
       },
       // Реализация

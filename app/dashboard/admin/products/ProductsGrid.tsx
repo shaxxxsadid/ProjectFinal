@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pagination } from "@/app/components/ui/pagination";
 import { ProductShort } from "@/types/store.types";
 import { useProductsStore } from "@/app/store/productStore";
 import ProductAvatar from "@/app/components/ui/ProductAvatar";
 import { cn } from "@/lib/utils";
-import { CrudProductModal } from "@/app/components/ui/admin/modal/ProductCrudModal";
+
 
 export const ProductGrid = () => {
     const {
@@ -20,7 +20,6 @@ export const ProductGrid = () => {
 
     const { filteredItems, pagination } = products;
     const { page, totalPages } = pagination;
-    const [isOpen, setIsOpen] = useState(false);
     const currentProducts = useMemo(() => {
         const start = (page - 1) * pagination.limit;
         return filteredItems.slice(start, start + pagination.limit);
