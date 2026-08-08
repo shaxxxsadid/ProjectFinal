@@ -23,7 +23,7 @@ export default function StokeDistributionChart({ data }: { data: PieData }) {
     const reservedColor = am5.color(isDark ? 0xf59e0b : 0xd97706);
 
     const chart = root.container.children.push(
-      am5percent.PieChart.new(root, { 
+      am5percent.PieChart.new(root, {
         layout: root.verticalLayout,
       })
     );
@@ -57,7 +57,6 @@ export default function StokeDistributionChart({ data }: { data: PieData }) {
       return fill;
     });
 
-    // ✅ ИСПРАВЛЕННЫЕ ЛЕЙБЛЫ с правильным форматом
     series.labels.template.setAll({
       fontSize: 14, // ✅ Увеличили шрифт
       fill: am5.color(isDark ? 0xe4e4e7 : 0x27272a),
@@ -79,13 +78,16 @@ export default function StokeDistributionChart({ data }: { data: PieData }) {
 
     // ✅ Устанавливаем данные
     series.data.setAll(data);
-    
+
     // ✅ Принудительно пересчитываем проценты для каждого элемента
     const total = data.reduce((sum, item) => sum + item.value, 0);
+
     series.dataItems.forEach((dataItem) => {
       const value = dataItem.get("value") || 0;
       const percent = total > 0 ? (value / total) * 100 : 0;
-      dataItem.set("percent", percent);
+
+      // ✅ Исправление: используйте type assertion на самом объекте, а не на свойстве
+      (dataItem as any).percent = percent;
     });
 
     series.appear(1000, 100);

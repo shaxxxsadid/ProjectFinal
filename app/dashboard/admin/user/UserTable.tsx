@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Pagination } from "@/app/components/ui/pagination";
 import UserAvatar from "@/app/components/ui/userAvatar";
@@ -9,7 +9,7 @@ import { UserShort } from "@/types/store.types";
 const ITEMS_PER_PAGE = 6;
 const ITEM_HEIGHT = 52;
 
-export const UserTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
+export const UserTable = React.memo(({ searchQuery = '' }: { searchQuery?: string }) => {
   const { user, selectedUser, setSelectedUser, avatarVersions } = useUserStore();
   const activeUser: UserShort | null = selectedUser ?? null;
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,4 +88,4 @@ export const UserTable = ({ searchQuery = '' }: { searchQuery?: string }) => {
       )}
     </div>
   );
-};
+});

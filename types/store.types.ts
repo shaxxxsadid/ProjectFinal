@@ -8,37 +8,7 @@ export interface RoleShort {
     description?: string;
 }
 
-export interface ProductShort {
-    _id: string;
-    name: string;
-    sku: string;
-    weight: number;
-    length: number;
-    width: number;
-    height: number;
-    isIPPC_Certified: boolean;
-    isHeatTreated: boolean;
-    categoryId: string;
-    avatar?: string;
-    price?: number;
-    createdAt?: string;
-    updatedAt?: string;
-}
 
-export interface ProductsPagination {
-    page: number;
-    limit: number;
-    totalPages: number;
-    total: number;
-}
-
-export interface ProductsState {
-    items: ProductShort[];
-    filteredItems: ProductShort[];
-    pagination: ProductsPagination;
-    error: string | null;
-    isLoading: boolean;
-}
 
 export interface AccountShort {
   _id: string;
@@ -71,22 +41,6 @@ export interface BusinessProfileShort {
     updatedAt: string;
 }
 
-export interface ProductShort {
-    _id: string;
-    name: string;
-    sku: string;
-    weight: number;
-    length: number;
-    width: number;
-    height: number;
-    isIPPC_Certified: boolean;
-    isHeatTreated: boolean;
-    categoryId: string;
-    avatar?: string;
-    price?: number;
-    createdAt?: string;
-    updatedAt?: string;
-}
 
 export interface StokeShort {
     _id: string;
@@ -153,45 +107,6 @@ export interface DataListState<T> {
     pagination: PaginationState;
     searchQuery: string;
     filteredItems: T[];
-}
-
-export interface AdminStoreState {
-    // Products
-    productIsLoading: boolean;
-    products: DataListState<ProductShort>;
-    setProducts: (items: ProductShort[], total: number) => void;
-    setProductsLoading: (loading: boolean) => void;
-    setProductsError: (error: string | null) => void;
-    searchProducts: (query: string) => void;
-    setProductPage: (page: number) => void;
-    fetchProducts: (productId: ProductShort) => void;
-
-    // Users
-    users: DataListState<UserShort>;
-    setUsers: (items: UserShort[], total: number) => void;
-    setUsersLoading: (loading: boolean) => void;
-    setUsersError: (error: string | null) => void;
-    searchUsers: (query: string) => void;
-    setUserPage: (page: number) => void;
-
-    // Stock
-    stock: DataListState<StokeShort>;
-    setStock: (items: StokeShort[], total: number) => void;
-    setStockLoading: (loading: boolean) => void;
-    setStockError: (error: string | null) => void;
-    searchStock: (query: string) => void;
-    setStockPage: (page: number) => void;
-
-    // Warehouses
-    warehouses: DataListState<WarehouseShort>;
-    setWarehouses: (items: WarehouseShort[], total: number) => void;
-    setWarehousesLoading: (loading: boolean) => void;
-    setWarehousesError: (error: string | null) => void;
-    searchWarehouses: (query: string) => void;
-    setWarehousePage: (page: number) => void;
-
-    // General
-    limit: number;
 }
 
 export interface UserStoreState {
@@ -290,3 +205,96 @@ export interface WarehouseStoreState {
     error: string | null;
 }
 
+// types/store.types.ts
+
+export type ProductStorageType = 'сыпучие' | 'навал' | 'настольные' | 'контейнеры';
+export type ProductPackagingUnit = 'шт' | 'кг' | 'м' | 'паллет';
+
+export interface ProductPackaging {
+    unit?: ProductPackagingUnit;
+    quantityPerUnit?: number;
+}
+
+export interface ProductStorageConditions {
+    temperatureMin?: number;
+    temperatureMax?: number;
+    humidityMax?: number;
+}
+
+export interface ProductCertification {
+    name: string; // 'ISO9001' | 'CE' | 'IPPC' и т.д.
+    value: boolean;
+}
+
+export interface ProductShort {
+    _id: string;
+    name: string;
+    sku: string;
+    categoryId: string;
+    price?: number;
+
+    // Физические характеристики
+    length?: number;
+    width?: number;
+    height?: number;
+    weight?: number;
+
+    // Логистика
+    loadCapacity?: number;
+    volumeM3?: number;
+    palletQuantity?: number;
+    storageType?: ProductStorageType;
+    packaging?: ProductPackaging;
+    storageConditions?: ProductStorageConditions;
+
+    // Отраслевые проверки
+    isHeatTreated?: boolean;
+    isIPPC_Certified?: boolean;
+    expiryDate?: string;
+    certifications?: ProductCertification[];
+
+    avatar?: string; // на фронте всегда строка (base64 data URL), не Buffer
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+// Пейлоад для create/update — без служебных полей
+export type ProductInput = Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>;
+
+export interface ProductsPagination {
+    page: number;
+    limit: number;
+    totalPages: number;
+    total: number;
+}
+
+export interface ProductsState {
+    items: ProductShort[];
+    filteredItems: ProductShort[];
+    pagination: ProductsPagination;
+    searchQuery?: string;
+    error: string | null;
+}
+
+export interface ProductStoreState {
+    products: ProductsState;
+    selectedProduct: ProductShort | null;
+    isLoading: boolean;
+    avatarVersions: Record<string, number>;
+
+    setSelectedProduct: (product: ProductShort | null) => void;
+    setProducts: (items: ProductShort[], total: number) => void;
+    setProductsLoading: (loading: boolean) => void;
+    setProductsError: (error: string | null) => void;
+    searchProducts: (query: string) => void;
+    setProductPage: (page: number) => void;
+
+    fetchProducts: () => Promise<void>;
+    fetchProductBySku: (sku: string) => Promise<ProductShort | null>;
+    createProduct: (data: ProductInput) => Promise<{ success: boolean; error?: string; data?: ProductShort }>;
+    updateProduct: (
+        productId: string,
+        data: Partial<ProductInput>
+    ) => Promise<{ success: boolean; error?: string; data?: ProductShort }>;
+    deleteProduct: (_id: string) => Promise<{ success: boolean; error?: string }>;
+}

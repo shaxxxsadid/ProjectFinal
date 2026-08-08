@@ -7,5 +7,5 @@ export function SessionProviderWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  return <SessionProvider refetchInterval={0}>{children}</SessionProvider>;
+  return <SessionProvider refetchInterval={5000}>{children}</SessionProvider>;
 }

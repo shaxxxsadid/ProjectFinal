@@ -1,47 +1,53 @@
 'use client';
 import { BackgroundPaths } from "@/app/components/ui/paths";
 import { MotionEffect } from "@/app/components/ui/motion-highlight";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense, lazy } from "react";
 import { Tabs } from "@/app/components/ui/tabs";
-import { FaBasketShopping, FaShareNodes, FaUser } from "react-icons/fa6";
-import { FaBox, FaBusinessTime, FaDolly, FaLink, FaUserLock } from "react-icons/fa";
+// 🎯 Импортируем только необходимые иконки
+import { FaBasketShopping, FaShareNodes, FaUser, FaBox, FaBusinessTime, FaDolly, FaLink, FaUserLock } from "react-icons/fa6";
 import { HorizontalWrapper } from "@/app/components/ui/horizontalWrapper";
 import { useUserStore } from "@/app/store/userStore";
 import { useRoleStore } from "@/app/store/roleStore";
 import { useBusinessProfileStore } from "@/app/store/businessProfileStore";
-import { UserTable } from "./user/UserTable";
-import { UserDetails } from "./user/UserDetails";
 import { useAccountStore } from "@/app/store/accountStore";
 import { useProviderStore } from "@/app/store/providerStore";
-import { AccountDetails } from "./account/AccountDetails";
-import { AccountTable } from "./account/AccountTable";
-import { BusinessTable } from "./business/BusinessTable";
-import { BusinessDetails } from "./business/BusinessDetails";
-import { ProviderTable } from "./provider/ProviderTable";
-import { ProviderDetails } from "./provider/ProviderDetails";
-import { RoleTable } from "./role/RoleTable";
-import { RoleDetails } from "./role/RoleDetails";
-import { ProductGrid } from "./products/ProductsGrid";
 import { useProductsStore } from "@/app/store/productStore";
-import { cn } from "@/lib/utils";
-import { ProductDetails } from "./products/ProductDetails";
 import { useStokeStore } from "@/app/store/stokeStore";
-import { StockTable } from "./stock/StockTable";
-import { StockDetails } from "./stock/StockDetails";
 import { useWarehouseStore } from "@/app/store/warehouseStore";
-import { WarehouseTable } from "./warehouse/WarehouseTable";
-import { WarehouseDetails } from "./warehouse/WarehouseDetails";
+import { cn } from "@/lib/utils";
 import { useDebounce } from "@/app/hooks/debounce";
 import { AnimatePresence, motion } from "framer-motion";
-import { UserCrudModal } from "@/app/components/ui/UserCrudModal";
 import { BusinessProfileShort, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
 import { toast } from "react-hot-toast";
-import { BusinessProfileCrudModal } from "@/app/components/ui/admin/modal/BusinessCrudModal";
-import { CrudProviderModal } from "@/app/components/ui/admin/modal/ProviderCrudModal";
-import { CrudRoleModal } from "@/app/components/ui/admin/modal/RoleCrudModal";
-import { CrudProductModal } from "@/app/components/ui/admin/modal/ProductCrudModal";
-import { StockCrudModal } from "@/app/components/ui/admin/modal/StockCrudModal";
-import { WarehouseCrudModal } from "@/app/components/ui/admin/modal/WarehouseCrudModal";
+
+
+const UserTable = lazy(() => import("./user/UserTable").then(m => ({ default: m.UserTable })));
+const UserDetails = lazy(() => import("./user/UserDetails").then(m => ({ default: m.UserDetails })));
+const AccountTable = lazy(() => import("./account/AccountTable").then(m => ({ default: m.AccountTable })));
+const AccountDetails = lazy(() => import("./account/AccountDetails").then(m => ({ default: m.AccountDetails })));
+const BusinessTable = lazy(() => import("./business/BusinessTable").then(m => ({ default: m.BusinessTable })));
+const BusinessDetails = lazy(() => import("./business/BusinessDetails").then(m => ({ default: m.BusinessDetails })));
+const ProviderTable = lazy(() => import("./provider/ProviderTable").then(m => ({ default: m.ProviderTable })));
+const ProviderDetails = lazy(() => import("./provider/ProviderDetails").then(m => ({ default: m.ProviderDetails })));
+const RoleTable = lazy(() => import("./role/RoleTable").then(m => ({ default: m.RoleTable })));
+const RoleDetails = lazy(() => import("./role/RoleDetails").then(m => ({ default: m.RoleDetails })));
+const ProductGrid = lazy(() => import("./products/ProductsGrid").then(m => ({ default: m.ProductGrid })));
+const ProductDetails = lazy(() => import("./products/ProductDetails").then(m => ({ default: m.ProductDetails })));
+const StockTable = lazy(() => import("./stock/StockTable").then(m => ({ default: m.StockTable })));
+const StockDetails = lazy(() => import("./stock/StockDetails").then(m => ({ default: m.StockDetails })));
+const WarehouseTable = lazy(() => import("./warehouse/WarehouseTable").then(m => ({ default: m.WarehouseTable })));
+const WarehouseDetails = lazy(() => import("./warehouse/WarehouseDetails").then(m => ({ default: m.WarehouseDetails })));
+
+const UserCrudModal = lazy(() => import("@/app/components/ui/UserCrudModal").then(m => ({ default: m.UserCrudModal })));
+const BusinessProfileCrudModal = lazy(() => import("@/app/components/ui/admin/modal/BusinessCrudModal").then(m => ({ default: m.BusinessProfileCrudModal })));
+const CrudProviderModal = lazy(() => import("@/app/components/ui/admin/modal/ProviderCrudModal").then(m => ({ default: m.CrudProviderModal })));
+const CrudRoleModal = lazy(() => import("@/app/components/ui/admin/modal/RoleCrudModal").then(m => ({ default: m.CrudRoleModal })));
+const CrudProductModal = lazy(() => import("@/app/components/ui/admin/modal/ProductCrudModal").then(m => ({ default: m.CrudProductModal })));
+const StockCrudModal = lazy(() => import("@/app/components/ui/admin/modal/StockCrudModal").then(m => ({ default: m.StockCrudModal })));
+const WarehouseCrudModal = lazy(() => import("@/app/components/ui/admin/modal/WarehouseCrudModal").then(m => ({ default: m.WarehouseCrudModal })));
+
+// Suspense fallback для ленивых компонентов
+const LoadingFallback = () => <div className="animate-pulse bg-foreground/10 rounded-xl h-96" />;
 
 
 const TAB_TITLES: Record<string, string> = {
@@ -81,8 +87,10 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('tab1');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const debounceSearchQuery = useDebounce(searchQuery, 500);
 
+  // 🎯 Первоначальный fetch при монтировании
   useEffect(() => {
     if (!user) fetchUser();
     if (!roles) fetchRoles();
@@ -92,7 +100,25 @@ export default function AdminDashboard() {
     if (products.items.length === 0) fetchProducts();
     if (!stock) fetchStock();
     if (!warehouses) fetchWarehouses();
-  }, [fetchUser, fetchRoles, fetchBusinessProfiles, user, roles, businessProfiles, fetchAccount, account, providers, fetchProviders, products.items.length, fetchProducts, fetchStock, stock, fetchWarehouses, warehouses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 🎯 Рефетч при изменении refreshTrigger (после создания/обновления/удаления)
+  useEffect(() => {
+    if (refreshTrigger === 0) return; // Пропускаем первый вызов
+    
+    // Рефетч только активного таба
+    switch (activeTab) {
+      case 'tab1': fetchUser(); break;
+      case 'tab2': fetchAccount(); break;
+      case 'tab3': fetchBusinessProfiles(); break;
+      case 'tab4': fetchProviders(); break;
+      case 'tab5': fetchRoles(); break;
+      case 'tab6': fetchProducts(); break;
+      case 'tab7': fetchStock(); break;
+      case 'tab8': fetchWarehouses(); break;
+    }
+  }, [refreshTrigger, activeTab, fetchUser, fetchAccount, fetchBusinessProfiles, fetchProviders, fetchRoles, fetchProducts, fetchStock, fetchWarehouses]);
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
@@ -108,28 +134,28 @@ export default function AdminDashboard() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'tab1': return <UserTable searchQuery={debounceSearchQuery} />;
-      case 'tab2': return <AccountTable searchQuery={debounceSearchQuery} />;
-      case 'tab3': return <BusinessTable searchQuery={debounceSearchQuery} />;
-      case 'tab4': return <ProviderTable searchQuery={debounceSearchQuery} />;
-      case 'tab5': return <RoleTable />;
-      case 'tab6': return <ProductGrid />;
-      case 'tab7': return <StockTable searchQuery={debounceSearchQuery} />;
-      case 'tab8': return <WarehouseTable searchQuery={debounceSearchQuery} />;
+      case 'tab1': return <Suspense fallback={<LoadingFallback />}><UserTable searchQuery={debounceSearchQuery} /></Suspense>;
+      case 'tab2': return <Suspense fallback={<LoadingFallback />}><AccountTable searchQuery={debounceSearchQuery} /></Suspense>;
+      case 'tab3': return <Suspense fallback={<LoadingFallback />}><BusinessTable searchQuery={debounceSearchQuery} /></Suspense>;
+      case 'tab4': return <Suspense fallback={<LoadingFallback />}><ProviderTable searchQuery={debounceSearchQuery} /></Suspense>;
+      case 'tab5': return <Suspense fallback={<LoadingFallback />}><RoleTable /></Suspense>;
+      case 'tab6': return <Suspense fallback={<LoadingFallback />}><ProductGrid /></Suspense>;
+      case 'tab7': return <Suspense fallback={<LoadingFallback />}><StockTable searchQuery={debounceSearchQuery} /></Suspense>;
+      case 'tab8': return <Suspense fallback={<LoadingFallback />}><WarehouseTable searchQuery={debounceSearchQuery} /></Suspense>;
       default: return <p className="text-muted-foreground text-center py-8">Coming soon</p>;
     }
   };
 
   const renderDetails = () => {
     switch (activeTab) {
-      case 'tab1': return <UserDetails />;
-      case 'tab2': return <AccountDetails />;
-      case 'tab3': return <BusinessDetails />;
-      case 'tab4': return <ProviderDetails />;
-      case 'tab5': return <RoleDetails />;
-      case 'tab6': return <ProductDetails />;
-      case 'tab7': return <StockDetails />;
-      case 'tab8': return <WarehouseDetails />;
+      case 'tab1': return <Suspense fallback={null}><UserDetails /></Suspense>;
+      case 'tab2': return <Suspense fallback={null}><AccountDetails /></Suspense>;
+      case 'tab3': return <Suspense fallback={null}><BusinessDetails /></Suspense>;
+      case 'tab4': return <Suspense fallback={null}><ProviderDetails /></Suspense>;
+      case 'tab5': return <Suspense fallback={null}><RoleDetails /></Suspense>;
+      case 'tab6': return <Suspense fallback={null}><ProductDetails /></Suspense>;
+      case 'tab7': return <Suspense fallback={null}><StockDetails /></Suspense>;
+      case 'tab8': return <Suspense fallback={null}><WarehouseDetails /></Suspense>;
       default: return null;
     }
   };
@@ -146,6 +172,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Пользователь создан');
                 setIsCreateOpen(false);
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
@@ -167,13 +194,12 @@ export default function AdminDashboard() {
                 if (res.success) {
                   toast.success('Бизнес профиль создан');
                   setIsCreateOpen(false);
-                  // Опционально: обновить список профилей
-                  // await refetchProfiles();
+                  setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
                 } else {
                   toast.error(res.error || 'Ошибка создания');
                 }
                 return res;
-              } catch (error) {
+              } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
                 toast.error('Сетевая ошибка при создании профиля');
                 return { success: false, error: 'Network error' };
               }
@@ -191,6 +217,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Провайдер создан');
                 setIsCreateOpen(false);
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
@@ -209,6 +236,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Роль создана');
                 setIsCreateOpen(false);
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
@@ -227,6 +255,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Продукт создан');
                 setIsCreateOpen(false);
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
@@ -245,6 +274,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Позиция создана');
                 setIsCreateOpen(false);
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
@@ -265,6 +295,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Склад создан');
                 setIsCreateOpen(false);
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
@@ -395,7 +426,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Модалки создания */}
-      {renderCreateModal()}
+      <Suspense fallback={null}>
+        {renderCreateModal()}
+      </Suspense>
     </div>
   );
 }

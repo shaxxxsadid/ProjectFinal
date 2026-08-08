@@ -21,11 +21,7 @@ export const buttonPresets = {
             boxShadow: "0 0 25px rgba(59, 130, 246, 0.6)",
             scale: 1.08,
         },
-        transition: {
-            type: "spring",
-            stiffness: 400,
-            damping: 17,
-        },
+       transition: { duration: 0.3, ease: "easeOut" },
     } as MotionProps,
 
     bouncy: {

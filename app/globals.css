@@ -148,6 +148,7 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --breakpoint-3xl: 1920px;
 }
 
 /* Custom Scrollbar */
@@ -225,10 +226,11 @@
 
 .smooth-image {
   /* Форсирует плавное масштабирование в браузерах */
-  image-rendering: -webkit-optimize-contrast; /* Для четкости без артефактов */
-  image-rendering: auto; 
+  image-rendering: -webkit-optimize-contrast;
+  /* Для четкости без артефактов */
+  image-rendering: auto;
   /* Трюк с аппаратным ускорением для сглаживания */
-  transform: translateZ(0); 
+  transform: translateZ(0);
 }
 
 @layer base {

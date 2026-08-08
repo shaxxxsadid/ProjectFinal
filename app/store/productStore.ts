@@ -1,39 +1,8 @@
-import { ProductShort } from '@/types/store.types';
+import { ProductShort, ProductStoreState } from '@/types/store.types';
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-export interface PaginationState {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-}
-
-export interface DataListState<T> {
-    items: T[];
-    filteredItems: T[];
-    pagination: PaginationState;
-    searchQuery?: string;
-    error?: string | null;
-}
-
-interface ProductsStore {
-    productIsLoading: boolean;
-    products: DataListState<ProductShort>;
-    selectedProduct: ProductShort | null;
-    avatarVersions: Record<string, number>; // ✅ исправлено
-    createProduct: (product: ProductShort) => Promise<{ success: boolean; error?: string; data?: ProductShort }>;
-    updateProduct: (productId: string, data: Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
-    setSelectedProduct: (product: ProductShort | null) => void;
-    setProducts: (items: ProductShort[], total: number) => void;
-    setProductsLoading: (loading: boolean) => void;
-    setProductsError: (error: string | null) => void;
-    searchProducts: (query: string) => void;
-    setProductPage: (page: number) => void;
-    fetchProducts: () => Promise<void>;
-    deleteProduct: (_id: string) => Promise<void>;
-}
-
-const filterItems = <T extends Record<string, any>>(// eslint-disable-line
+const filterItems = <T extends Record<string, any>>( // eslint-disable-line
     items: T[],
     query: string,
     fields: (keyof T)[]
@@ -52,193 +21,258 @@ const filterItems = <T extends Record<string, any>>(// eslint-disable-line
 
 const ITEMS_PER_PAGE = 6;
 
-const initialProductsState: DataListState<ProductShort> = {
-    items: [],
-    filteredItems: [],
-    pagination: {
-        page: 1,
-        limit: ITEMS_PER_PAGE,
-        total: 0,
-        totalPages: 0,
-    },
-    searchQuery: '',
-    error: null,
-};
-
-export const useProductsStore = create<ProductsStore>((set, get) => ({
-    productIsLoading: false,
-    products: initialProductsState,
-    selectedProduct: null,
-    avatarVersions: {}, // ✅ исправлено
-
-    setSelectedProduct: (product) => set({ selectedProduct: product }),
-
-    setProducts: (items, total) =>
-        set((state) => ({
+export const useProductsStore = create<ProductStoreState>()(
+    persist(
+        (set, get) => ({
             products: {
-                ...state.products,
-                items,
-                filteredItems: items,
+                items: [],
+                filteredItems: [],
                 pagination: {
                     page: 1,
                     limit: ITEMS_PER_PAGE,
-                    total,
-                    totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+                    total: 0,
+                    totalPages: 0,
                 },
+                searchQuery: '',
                 error: null,
             },
-        })),
+            selectedProduct: null,
+            isLoading: false,
+            avatarVersions: {} as Record<string, number>,
 
-    setProductsLoading: (loading) => set({ productIsLoading: loading }),
-    setProductsError: (error) => set((state) => ({ products: { ...state.products, error } })),
+            setSelectedProduct: (product) => set({ selectedProduct: product }),
 
-    createProduct: async (product) => {
-        try {
-            set({ productIsLoading: true, products: { ...get().products, error: null } });
-            const res = await fetch('/api/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(product),
-            });
-            const result = await res.json();
-            if (!res.ok || !result.success) throw new Error(result.error || 'Failed to create product');
-            await get().fetchProducts();
-            return { success: true, error: undefined };
-        } catch (error) {
-            set({
-                productIsLoading: false,
-                products: { ...get().products, error: error instanceof Error ? error.message : 'Unknown error' },
-            });
-            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-        }
-    },
-
-    searchProducts: (query) =>
-        set((state) => {
-            const filtered = query.trim()
-                ? filterItems(state.products.items, query, ['name', 'sku'] as (keyof ProductShort)[])
-                : state.products.items;
-            return {
-                products: {
-                    ...state.products,
-                    searchQuery: query,
-                    filteredItems: filtered,
-                    pagination: { ...state.products.pagination, page: 1 },
-                },
-            };
-        }),
-
-    setProductPage: (page) =>
-        set((state) => ({
-            products: {
-                ...state.products,
-                pagination: { ...state.products.pagination, page },
-            },
-        })),
-
-    fetchProducts: async () => {
-        const { setProductsLoading, setProducts, setProductsError } = get();
-        try {
-            setProductsLoading(true);
-            setProductsError(null);
-            const res = await fetch('/api/products');
-            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-            const data = await res.json();
-            const items: ProductShort[] = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-            const total = typeof data?.total === 'number' ? data.total : items.length;
-            setProducts(items, total);
-        } catch (err) {
-            console.error('Failed to fetch products:', err);
-            setProductsError(err instanceof Error ? err.message : 'Ошибка загрузки товаров');
-        } finally {
-            setProductsLoading(false);
-        }
-    },
-
-    updateProduct: async (productId, data) => {
-        try {
-            set({ productIsLoading: true, products: { ...get().products, error: null } });
-
-            const res = await fetch(`/api/products`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ _id: productId, ...data }),
-            });
-
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || 'Failed to update product');
-            }
-
-            const response = await res.json();
-            const updatedProduct = response.data ?? response;
-            const normalizedId = String(productId);
-
-            set((state) => {
-                const items = state.products.items.map(p =>
-                    String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
-                );
-                const filteredItems = state.products.filteredItems.map(p =>
-                    String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
-                );
-                const updatedSelected = state.selectedProduct && String(state.selectedProduct._id) === normalizedId
-                    ? { ...state.selectedProduct, ...updatedProduct }
-                    : state.selectedProduct;
-
-                return {
-                    products: { ...state.products, items, filteredItems },
-                    selectedProduct: updatedSelected,
-                    productIsLoading: false,
-                    avatarVersions: {
-                        ...state.avatarVersions,
-                        [normalizedId]: (state.avatarVersions[normalizedId] ?? 0) + 1,
-                    },
-                };
-            });
-            return { success: true };
-        } catch (error) {
-            set((state) => ({
-                products: { ...state.products, error: error instanceof Error ? error.message : 'Unknown error' },
-                productIsLoading: false,
-            }));
-            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-        }
-    },
-
-    deleteProduct: async (_id) => {
-        const { setProductsLoading, setProductsError } = get();
-        try {
-            setProductsLoading(true);
-            setProductsError(null);
-            const res = await fetch('/api/products', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ _id }),
-            });
-            const result = await res.json();
-            if (!res.ok || !result.success) throw new Error(result.error || 'Failed to delete product');
-            set((state) => {
-                const items = state.products.items.filter(p => p._id !== _id);
-                const filteredItems = state.products.filteredItems.filter(p => p._id !== _id);
-                const total = items.length;
-                return {
-                    selectedProduct: state.selectedProduct?._id === _id ? null : state.selectedProduct,
+            setProducts: (items, total) =>
+                set((state) => ({
                     products: {
                         ...state.products,
                         items,
-                        filteredItems,
+                        filteredItems: items,
                         pagination: {
-                            ...state.products.pagination,
+                            page: 1,
+                            limit: ITEMS_PER_PAGE,
                             total,
                             totalPages: Math.ceil(total / ITEMS_PER_PAGE),
                         },
+                        error: null,
                     },
-                };
-            });
-        } catch (err) {
-            setProductsError(err instanceof Error ? err.message : 'Ошибка удаления товара');
-        } finally {
-            setProductsLoading(false);
+                })),
+
+            setProductsLoading: (loading) => set({ isLoading: loading }),
+
+            setProductsError: (error) =>
+                set((state) => ({ products: { ...state.products, error } })),
+
+            searchProducts: (query) =>
+                set((state) => {
+                    const filtered = query.trim()
+                        ? filterItems(state.products.items, query, ['name', 'sku'] as (keyof ProductShort)[])
+                        : state.products.items;
+                    return {
+                        products: {
+                            ...state.products,
+                            searchQuery: query,
+                            filteredItems: filtered,
+                            pagination: { ...state.products.pagination, page: 1 },
+                        },
+                    };
+                }),
+
+            setProductPage: (page) =>
+                set((state) => ({
+                    products: {
+                        ...state.products,
+                        pagination: { ...state.products.pagination, page },
+                    },
+                })),
+
+            fetchProducts: async () => {
+                const { setProductsLoading, setProducts, setProductsError } = get();
+                try {
+                    setProductsLoading(true);
+                    setProductsError(null);
+                    const res = await fetch('/api/products');
+                    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    const data = await res.json();
+                    const items: ProductShort[] = Array.isArray(data)
+                        ? data
+                        : Array.isArray(data?.data)
+                        ? data.data
+                        : [];
+                    const total = typeof data?.total === 'number' ? data.total : items.length;
+                    setProducts(items, total);
+                } catch (error) {
+                    setProductsError(error instanceof Error ? error.message : 'Ошибка загрузки товаров');
+                } finally {
+                    setProductsLoading(false);
+                }
+            },
+
+            fetchProductBySku: async (sku) => {
+                try {
+                    set({ isLoading: true, products: { ...get().products, error: null } });
+                    const res = await fetch(`/api/products/${encodeURIComponent(sku)}`);
+                    if (!res.ok) throw new Error('Failed to fetch product');
+                    const result = await res.json();
+                    if (!result.success) throw new Error(result.error || 'Product not found');
+                    return result.data as ProductShort;
+                } catch (error) {
+                    set((state) => ({
+                        products: {
+                            ...state.products,
+                            error: error instanceof Error ? error.message : 'Unknown error',
+                        },
+                    }));
+                    return null;
+                } finally {
+                    set({ isLoading: false });
+                }
+            },
+
+            createProduct: async (data) => {
+                try {
+                    set({ isLoading: true, products: { ...get().products, error: null } });
+
+                    const res = await fetch('/api/products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Failed to create product');
+                    }
+
+                    const response = await res.json();
+                    const createdProduct = response.data ?? response;
+
+                    await get().fetchProducts();
+                    set({ isLoading: false });
+
+                    return { success: true, data: createdProduct };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    set((state) => ({
+                        products: { ...state.products, error: message },
+                        isLoading: false,
+                    }));
+                    return { success: false, error: message };
+                }
+            },
+
+            updateProduct: async (productId, data) => {
+                try {
+                    set({ isLoading: true, products: { ...get().products, error: null } });
+
+                    const res = await fetch('/api/products', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ _id: productId, ...data }),
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Failed to update product');
+                    }
+
+                    const response = await res.json();
+                    const updatedProduct = response.data ?? response;
+                    const normalizedId = String(productId);
+
+                    set((state) => {
+                        const items = state.products.items.map((p) =>
+                            String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
+                        );
+                        const filteredItems = state.products.filteredItems.map((p) =>
+                            String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
+                        );
+                        const updatedSelected =
+                            state.selectedProduct && String(state.selectedProduct._id) === normalizedId
+                                ? { ...state.selectedProduct, ...updatedProduct }
+                                : state.selectedProduct;
+
+                        return {
+                            products: { ...state.products, items, filteredItems },
+                            selectedProduct: updatedSelected,
+                            isLoading: false,
+                            avatarVersions: {
+                                ...state.avatarVersions,
+                                [normalizedId]: (state.avatarVersions[normalizedId] ?? 0) + 1,
+                            },
+                        };
+                    });
+
+                    return { success: true, data: updatedProduct };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    set((state) => ({
+                        // ⚠️ Никогда не сбрасываем products при ошибке — тот же принцип, что в provider store
+                        products: { ...state.products, error: message },
+                        isLoading: false,
+                    }));
+                    return { success: false, error: message };
+                }
+            },
+
+            deleteProduct: async (_id) => {
+                try {
+                    set({ isLoading: true, products: { ...get().products, error: null } });
+
+                    const res = await fetch('/api/products', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ _id }),
+                    });
+
+                    const result = await res.json().catch(() => ({}));
+                    if (!res.ok || (result.success === false)) {
+                        throw new Error(result.error || 'Failed to delete product');
+                    }
+
+                    set((state) => {
+                        const items = state.products.items.filter((p) => p._id !== _id);
+                        const filteredItems = state.products.filteredItems.filter((p) => p._id !== _id);
+                        const total = items.length;
+                        return {
+                            selectedProduct: state.selectedProduct?._id === _id ? null : state.selectedProduct,
+                            products: {
+                                ...state.products,
+                                items,
+                                filteredItems,
+                                pagination: {
+                                    ...state.products.pagination,
+                                    total,
+                                    totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+                                },
+                            },
+                            isLoading: false,
+                        };
+                    });
+
+                    return { success: true };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Ошибка удаления товара';
+                    set((state) => ({
+                        products: { ...state.products, error: message },
+                        isLoading: false,
+                    }));
+                    return { success: false, error: message };
+                }
+            },
+        }),
+        {
+            name: 'productStore',
+            // Список товаров может тянуть за собой base64-аватарки — не кладём его в localStorage целиком,
+            // персистим только лёгкие вещи (в отличие от providerStore, где данных немного и персист полный)
+            partialize: (state) => ({
+                avatarVersions: state.avatarVersions,
+                products: {
+                    ...state.products,
+                    items: [],
+                    filteredItems: [],
+                },
+            }),
         }
-    },
-}));
+    )
+);

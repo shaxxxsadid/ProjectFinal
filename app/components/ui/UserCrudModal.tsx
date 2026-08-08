@@ -1,7 +1,7 @@
 // UserCrudModal.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { FieldConfig, FormModal } from "./modal";
 import { useRoleStore } from '@/app/store/roleStore';
 import { useBusinessProfileStore } from '@/app/store/businessProfileStore';
@@ -91,11 +91,18 @@ export const UserCrudModal = ({ isOpen, onClose, onSubmit, mode = 'create', init
 
   const { roles, fetchRoles } = useRoleStore();
   const { businessProfiles, fetchBusinessProfiles } = useBusinessProfileStore();
+  
+  // ✅ Используем ref для отслеживания, чтобы не делать множественные fetch'и
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    if (!roles) fetchRoles();
-    if (!businessProfiles) fetchBusinessProfiles();
-  }, [roles, fetchRoles, businessProfiles, fetchBusinessProfiles]);
+    // Fetch только один раз при первом монтировании
+    if (!hasFetchedRef.current) {
+      if (!roles) fetchRoles();
+      if (!businessProfiles) fetchBusinessProfiles();
+      hasFetchedRef.current = true;
+    }
+  }, []);
   const fieldsWithOptions = fields.map(f => {
     if (f.name === 'roleId') {
       return {

@@ -6,7 +6,7 @@ class StokeService {
         try {
             return await Stoke.find();
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -14,7 +14,7 @@ class StokeService {
         try {
             return await Stoke.findOne({ productId });
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -23,7 +23,7 @@ class StokeService {
         try {
             return await Stoke.find({ warehouseId });
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -39,7 +39,7 @@ class StokeService {
         try {
             return await Stoke.create(stokeData);
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -56,7 +56,7 @@ class StokeService {
             const updatedStoke = await Stoke.findByIdAndUpdate(_id, { ...updateData, updatedAt: new Date() }, { new: true });
             return updatedStoke;
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -65,7 +65,7 @@ class StokeService {
         try {
             return await Stoke.findByIdAndDelete(_id);
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }

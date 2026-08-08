@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { ObjectId } from "mongoose";
 
 export interface IAvatar {
     fileName: string;
@@ -8,11 +8,11 @@ export interface IAvatar {
 
 // ========== ACCOUNTS ==========
 export interface AccountDbPopulated {
-  _id: Types.ObjectId;
-  userId: Types.ObjectId;
+  _id: ObjectId;
+  userId: ObjectId;
   type: 'oauth' | 'credential';
   providerId: {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     name: string;
   };
   providerAccountId?: string;
@@ -22,31 +22,31 @@ export interface AccountDbPopulated {
 }
 
 export interface IUpdateAccount {
-    _id?: Types.ObjectId;
-    userId?: Types.ObjectId;
+    _id?: ObjectId;
+    userId?: ObjectId;
      type?: "oauth" | "credential | credential & oauth";
     providerId?: {
-        id: Types.ObjectId;
+        id: ObjectId;
         providerAccountId: string;
-        _id: Types.ObjectId;
+        _id: ObjectId;
     };
     avatarUrl?: string;
 }
 
 export interface ICreateAccount {
-    userId: Types.ObjectId;
+    userId: ObjectId;
     type: "oauth" | "credential | credential & oauth";
     providerId?: {
-        id: Types.ObjectId;
+        id: ObjectId;
         providerAccountId: string;
-        _id: Types.ObjectId;
+        _id: ObjectId;
     };
     avatarUrl?: string;
 }
 
 // ========== USERS ==========
 export interface IUser {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     username?: string;
     email: string;
     firstName?: string;
@@ -57,8 +57,8 @@ export interface IUser {
         data: Buffer;
     };
     passwordHash: string;
-    roleId?: Types.ObjectId;
-    businessProfileId?: Types.ObjectId;
+    roleId?: ObjectId;
+    businessProfileId?: ObjectId;
     isActive: boolean;
     lastLogin?: Date;
     createdAt?: Date;
@@ -66,7 +66,7 @@ export interface IUser {
 }
 
 export interface IUpdateUser {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     username?: string;
     firstName?: string;
     lastName?: string;
@@ -76,8 +76,8 @@ export interface IUpdateUser {
         data?: Buffer;
     };
     passwordHash?: string;
-    roleId?: Types.ObjectId;
-    businessProfileId?: Types.ObjectId;
+    roleId?: ObjectId;
+    businessProfileId?: ObjectId;
     isActive?: boolean;
     lastLogin?: Date;
 }
@@ -94,7 +94,7 @@ export interface ICreateUser {
 
 // ========== BUSINESS PROFILE ==========
 export interface IBusinessProfile {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     type: "individual" | "company";
     profileNumber: string;
     legalName: string;
@@ -106,7 +106,7 @@ export interface IBusinessProfile {
 }
 
 export interface IUpdateBusinessProfile {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     type?: "individual" | "company";
     profileNumber?: string;
     legalName?: string;
@@ -126,10 +126,10 @@ export interface ICreateBusinessProfile {
 
 // ========== PRODUCTS ==========
 export interface IProduct {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     sku: string;
     name: string;
-    categoryId: Types.ObjectId;
+    categoryId: ObjectId;
     price: number;
     length?: number;
     width?: number;
@@ -148,10 +148,10 @@ export interface IProduct {
 }
 
 export interface IUpdateProduct {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     sku?: string;
     name?: string;
-    categoryId?: Types.ObjectId;
+    categoryId?: ObjectId;
     price?: number;
     length?: number;
     width?: number;
@@ -183,7 +183,7 @@ export interface ICreateProduct {
 
 // ========== PROVIDERS ==========
 export interface IProvider {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     publicId: string;
     name: string;
     displayName: string;
@@ -193,7 +193,7 @@ export interface IProvider {
 }
 
 export interface IUpdateProvider {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     publicId?: string;
     name?: string;
     displayName?: string;
@@ -209,7 +209,7 @@ export interface ICreateProvider {
 
 // ========== ROLES ==========
 export interface IRole {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     name: string;
     description: string;
     priority: number;
@@ -218,7 +218,7 @@ export interface IRole {
 }
 
 export interface IUpdateRole {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     name?: string;
     description?: string;
     priority?: number;
@@ -232,7 +232,7 @@ export interface ICreateRole {
 
 // ========== STOCK ==========
 export interface IStock {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     productId: string;
     warehouseId: string;
     quantity: number;
@@ -245,7 +245,7 @@ export interface IStock {
 }
 
 export interface IUpdateStock {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     productId?: string;
     warehouseId?: string;
     quantity?: number;
@@ -267,7 +267,7 @@ export interface ICreateStock {
 
 // ========== WAREHOUSE ==========
 export interface IWarehouse {
-    _id?: Types.ObjectId;
+    _id?: ObjectId;
     name: string;
     code: string;
     type: string;
@@ -282,7 +282,7 @@ export interface IWarehouse {
 }
 
 export interface IUpdateWarehouse {
-    _id: Types.ObjectId;
+    _id: ObjectId;
     name?: string;
     code?: string;
     type?: string;
@@ -295,7 +295,7 @@ export interface IUpdateWarehouse {
 }
 
 export interface ICreateWarehouse {
-    name: string;
+    name: string; // Название склада
     code: string;
     type: string;
     managerId: string;
@@ -304,4 +304,27 @@ export interface ICreateWarehouse {
     maxPalettes: number;
     totalAreaSqm: number;
     isActive?: boolean;
+}
+
+// Строгие типы данных для атрибутов категории
+export type AttributeDataType = 'number' | 'string' | 'boolean' | 'date'; 
+
+export interface CategoryAttribute {
+    name: string;                  // Название атрибута (например, "Гарантия")
+    type: AttributeDataType;       // Строгий тип данных
+    unit?: string;                 // Единица измерения (опционально: "мес", "кг", "см")
+    required?: boolean;            // Обязательно ли заполнять это поле при создании товара (по умолчанию false)
+}
+
+export interface ICategory {
+    _id?: ObjectId;
+    code: string;                       // Уникальный код категории
+    name: string;                       // Отображаемое имя
+    description?: string;               // Описание категории
+    parent: ObjectId | null;            // Для иерархии (подкатегории)
+    level: number;                      // Уровень вложенности (0 для корневых категорий)
+    attributes: CategoryAttribute[];    // Атрибуты для фильтрации и поиска товаров в категории
+    isActive?: boolean;                 // Активна ли категория
+    createdAt?: Date;
+    updatedAt?: Date;
 }

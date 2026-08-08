@@ -7,7 +7,17 @@ import Image from 'next/image';
 import { Images } from "@/public/images"
 import { useTheme } from 'next-themes';
 
-const subscribe = () => () => { };
+// Функция-заглушка для подписки на изменения состояния (клиент/сервер)
+const subscribe = () => () => {};
+
+/**
+ * Хук, который проверяет, выполняется ли компонент на клиенте.
+ * На сервере вернёт false, на клиенте — true.
+ */
+export const useIsClient = () => {
+  // useSyncExternalStore вызывает этот хук всегда на клиенте без лишних рендеров
+  return useSyncExternalStore(subscribe, () => true, () => false);
+};
 
 const UserAvatar = ({
   name,
@@ -25,6 +35,9 @@ const UserAvatar = ({
   const [avatar, setAvatar] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
 
+  // Проверяем, выполняемся ли мы на клиенте
+  const isClient = useIsClient();
+
   const sizeClasses = {
     sm: 'w-11 h-11 text-sm',
     md: 'w-16 h-16 text-base',
@@ -39,31 +52,24 @@ const UserAvatar = ({
     xl: 96
   };
 
-  const { theme } = useTheme();
-  const resolvedTheme = (theme === 'light' || theme === 'dark') ? theme : 'light';
-  const mounted = useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false
-  );
+  const { resolvedTheme } = useTheme();
 
+  // Эффект выполняется только на клиенте и только если есть email
   useEffect(() => {
-    if (!email) return;
-
-    let mounted = true;
+    if (!isClient || !email) return;
+    
     fetchAvatar(email, 'user', 'email', avatarVersion).then(res => {
-      if (mounted) {
-        if (res.success && res.data) {
-          setAvatar(res.data);
-          setImageError(false);
-        } else {
-          setAvatar(null);
-        }
+      if (res.success && res.data) {
+        setAvatar(res.data);
+        setImageError(false);
+      } else {
+        setAvatar(null);
       }
     });
+  }, [isClient, email, avatarVersion]);
 
-    return () => { mounted = false; };
-  }, [email, avatarVersion]);
+  // Если на сервере — просто рендерим заглушку
+  if (!isClient) return null;
 
   const handleError = () => {
     setImageError(true);
@@ -72,7 +78,6 @@ const UserAvatar = ({
   const sizeClass = sizeClasses[size];
   const sizeValue = sizeValues[size];
 
-  // Если есть аватар из БД - используем Image
   if (avatar && !imageError) {
     return (
       <div className={cn('relative rounded-full overflow-hidden', sizeClass)}>
@@ -88,7 +93,6 @@ const UserAvatar = ({
     );
   }
 
-  // Fallback image от провайдера
   if (fallbackImage && !imageError) {
     return (
       <div className={cn('relative rounded-full overflow-hidden', sizeClass)}>
@@ -104,22 +108,8 @@ const UserAvatar = ({
     );
   }
 
-  // Заглушка с инициалами
-  if (!mounted || imageError) {
-    return (
-      <div className={cn(
-        'rounded-full flex items-center justify-center font-semibold border border-border/50',
-        'text-foreground/80 bg-foreground/10',
-        sizeClass
-      )}>
-        {name.slice(0, 2).toUpperCase()}
-      </div>
-    );
-  }
-
-  // Дефолтное изображение
   return (
-    <div className={cn('relative rounded-full overflow-hidden', sizeClass)}>
+    <div className={cn('relative rounded-full overflow-hidden bg-muted', sizeClass)}>
       <Image
         src={Images[resolvedTheme === 'dark' ? 'dark' : 'light'].userPlaceholder}
         alt={name}

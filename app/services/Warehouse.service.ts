@@ -6,7 +6,7 @@ class WarehouseService {
         try {
             return await Warehouse.find();
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -14,7 +14,7 @@ class WarehouseService {
         try {
             return await Warehouse.findOne({ code });
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -22,7 +22,7 @@ class WarehouseService {
         try {
             return await Warehouse.create(warehouseData);
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }
@@ -42,7 +42,7 @@ class WarehouseService {
             const updatedWarehouse = await Warehouse.findByIdAndUpdate(_id, { ...updateData, updatedAt: new Date() }, { new: true });
             return updatedWarehouse;
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
      }
@@ -51,7 +51,7 @@ class WarehouseService {
         try {
             return await Warehouse.findByIdAndDelete(_id);
         } catch (error) {
-            logger.error(error);
+            logger.error(error as Error);
             throw error;
         }
     }

@@ -101,9 +101,9 @@ const FloatingField = ({
   return (
     <div className="relative pt-6 pb-2">
       <label className={cn(
-        "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+        "absolute left-3 pointer-events-none",
         "text-sm font-medium",
-        lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+        lifted ? "top-2 text-xs text-primary" : "top-3.5 text-muted-foreground"
       )}>
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
@@ -121,7 +121,6 @@ const FloatingField = ({
           "w-full px-3 py-3 bg-muted/30 rounded-lg",
           "text-sm text-foreground outline-none border-2",
           "border-transparent focus:border-primary/50",
-          "transition-all duration-200",
           "placeholder:text-muted-foreground/50"
         )}
       />
@@ -283,9 +282,9 @@ const ImageUrlField = ({
       {/* Поле ввода — реагирует мгновенно */}
       <div className="flex-1 relative pt-6 pb-2">
         <label className={cn(
-          "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+          "absolute left-3 pointer-events-none",
           "text-sm font-medium",
-          lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+          lifted ? "top-2 text-xs text-primary" : "top-3.5 text-muted-foreground"
         )}>
           {label}
           {required && <span className="text-destructive ml-0.5">*</span>}
@@ -333,9 +332,9 @@ const SelectField = ({
   return (
     <div className="relative pt-6 pb-2">
       <label className={cn(
-        "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+        "absolute left-3 pointer-events-none",
         "text-sm font-medium",
-        lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+        lifted ? "top-2 text-xs text-primary" : "top-3.5 text-muted-foreground"
       )}>
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
@@ -350,7 +349,6 @@ const SelectField = ({
           "w-full px-3 py-3 bg-muted/30 rounded-lg",
           "text-sm text-foreground outline-none border-2",
           "border-transparent focus:border-primary/50",
-          "transition-all duration-200",
           "appearance-none cursor-pointer",
           "pr-10"
         )}
@@ -383,9 +381,9 @@ const TextareaField = ({
   return (
     <div className="relative pt-6 pb-2">
       <label className={cn(
-        "absolute left-3 pointer-events-none transition-all duration-200 ease-out",
+        "absolute left-3 pointer-events-none",
         "text-sm font-medium",
-        lifted ? "top-2 text-xs text-primary -translate-y-1" : "top-3.5 text-muted-foreground"
+        lifted ? "top-2 text-xs text-primary" : "top-3.5 text-muted-foreground"
       )}>
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
@@ -402,7 +400,6 @@ const TextareaField = ({
           "w-full px-3 py-3 bg-muted/30 rounded-lg resize-none",
           "text-sm text-foreground outline-none border-2",
           "border-transparent focus:border-primary/50",
-          "transition-all duration-200",
           "placeholder:text-muted-foreground/50"
         )}
       />
@@ -479,10 +476,10 @@ export const FormModal = ({
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className={cn(
               "relative w-full max-w-md max-h-[90vh] overflow-hidden",
               "bg-background rounded-2xl shadow-2xl",
@@ -494,18 +491,18 @@ export const FormModal = ({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <motion.h2
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.1 }}
                     className="text-xl font-semibold text-foreground tracking-tight"
                   >
                     {title}
                   </motion.h2>
                   {description && (
                     <motion.p
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.15 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.15 }}
                       className="text-sm text-muted-foreground mt-1"
                     >
                       {description}
@@ -514,11 +511,9 @@ export const FormModal = ({
                 </div>
                 <motion.button
                   onClick={onClose}
-                  initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
-                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.2, type: "spring", stiffness: 200 }}
-                  whileHover={{ scale: 1.1, rotate: 90, transition: { duration: 0.2 } }}
-                  whileTap={{ scale: 0.9, rotate: 45 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.15 }}
                   className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
                   aria-label="Закрыть"
                 >
@@ -534,9 +529,9 @@ export const FormModal = ({
                 {fields.map((field, index) => (
                   <motion.div
                     key={field.name}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.1 }}
                   >
                     {field.type === 'image-url' ? (
                       <ImageUrlField
@@ -594,7 +589,11 @@ export const FormModal = ({
                                 <label className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 cursor-pointer transition-colors">
                                   <input
                                     type="checkbox"
-                                    checked={formData[child.name] === 'true' || child.initialValue === 'true' }
+                                    checked={
+                                      formData[child.name] !== undefined
+                                        ? formData[child.name] === 'true'
+                                        : child.initialValue === 'true'
+                                    }
                                     onChange={(e) => setFormData(prev => ({ ...prev, [child.name]: e.target.checked ? 'true' : 'false' }))}
                                     className="w-4 h-4 rounded border-border/50 text-primary focus:ring-primary/50"
                                   />
