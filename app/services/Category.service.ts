@@ -149,7 +149,8 @@ class CategoryService {
 
             const categories = await Category.find(query)
                 .populate({ path: 'parent', select: 'code name' })
-                .sort({ level: 1, name: 1 });
+                .sort({ level: 1, name: 1 })
+                .lean();
 
             return { success: true, data: categories };
         } catch (error) {
@@ -203,7 +204,7 @@ class CategoryService {
             // Считаем количество товаров в каждой категории
             const productsCountByCategory = await Products.aggregate([
                 { $match: { isActive: true } },
-                { $group: { _id: '$category', count: { $sum: 1 } } },
+                { $group: { _id: '$categoryId', count: { $sum: 1 } } },
             ]);
 
             const countMap = new Map<string, number>();
@@ -350,7 +351,7 @@ class CategoryService {
                 };
             }
 
-            const productsCount = await Products.countDocuments({ category: objectId });
+            const productsCount = await Products.countDocuments({ categoryId: objectId });
             if (productsCount > 0) {
                 return {
                     success: false,

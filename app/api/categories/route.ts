@@ -1,37 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { categoryService } from '@/app/services/Category.service';
-import { getServerSession } from 'next-auth';
-import { AuthOptions } from '../auth/[...nextauth]/route';
+import { connectToDatabase } from "@/app/lib/mongoose";
+import { categoryService, CATEGORY_ERRORS } from "@/app/services/Category.service";
 
-// GET /api/categories?search=xxx&isActive=true
-export async function GET(request: NextRequest) {
-  const session = await getServerSession(AuthOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { searchParams } = new URL(request.url);
-  const filter = {
-    search: searchParams.get('search') || undefined,
-    isActive: searchParams.get('isActive') === 'true' ? true : undefined,
-    level: searchParams.get('level') ? Number(searchParams.get('level')) : undefined,
-  };
-
-  const result = await categoryService.getAll(filter);
-  return NextResponse.json(
-    result.success ? result.data : { error: result.error },
-    { status: result.success ? 200 : 400 }
-  );
+// Коды ошибок сервиса → HTTP статус
+function statusFromCode(code?: string): number {
+    switch (code) {
+        case CATEGORY_ERRORS.NOT_FOUND:
+            return 404;
+        case CATEGORY_ERRORS.CODE_EXISTS:
+        case CATEGORY_ERRORS.HAS_CHILDREN:
+        case CATEGORY_ERRORS.HAS_PRODUCTS:
+        case CATEGORY_ERRORS.INVALID_PARENT:
+        case CATEGORY_ERRORS.INVALID_ATTRIBUTE:
+        case CATEGORY_ERRORS.VALIDATION_FAILED:
+            return 400;
+        default:
+            return 500;
+    }
 }
 
-// POST /api/categories
+export async function GET(request: NextRequest) {
+    try {
+        await connectToDatabase();
+        const { searchParams } = request.nextUrl;
+
+        const filter = {
+            search: searchParams.get('search') || undefined,
+            isActive: searchParams.has('isActive')
+                ? searchParams.get('isActive') === 'true'
+                : undefined,
+            parent: searchParams.has('parent') ? searchParams.get('parent') : undefined,
+            level: searchParams.has('level') ? Number(searchParams.get('level')) : undefined,
+        };
+
+        const result = await categoryService.getAll(filter);
+
+        if (!result.success) {
+            return NextResponse.json(result, { status: statusFromCode(result.code) });
+        }
+
+        return NextResponse.json(
+            { success: true, data: result.data, total: result.data?.length ?? 0 },
+            { status: 200 }
+        );
+    } catch (error) {
+        console.error(`GET /api/categories failed: ${error instanceof Error ? error.message : error}`);
+        return NextResponse.json({ success: false, error: 'Failed to fetch categories' }, { status: 500 });
+    }
+}
+
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(AuthOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    try {
+        await connectToDatabase();
+        const body = await request.json();
 
-  const body = await request.json();
-  const result = await categoryService.create(body);
+        const result = await categoryService.create(body);
 
-  return NextResponse.json(
-    result.success ? result.data : { error: result.error, code: result.code },
-    { status: result.success ? 201 : 400 }
-  );
+        if (!result.success) {
+            return NextResponse.json(result, { status: statusFromCode(result.code) });
+        }
+
+        return NextResponse.json(result, { status: 201 });
+    } catch (error) {
+        console.error(`POST /api/categories failed: ${error instanceof Error ? error.message : error}`);
+        return NextResponse.json({ success: false, error: 'Failed to create category' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: NextRequest) {
+    try {
+        await connectToDatabase();
+        const body = await request.json();
+        const { _id, id, ...updateData } = body;
+        const categoryId = _id || id;
+
+        if (!categoryId) {
+            return NextResponse.json({ success: false, error: 'Category id is required' }, { status: 400 });
+        }
+
+        const result = await categoryService.update(categoryId, updateData);
+
+        if (!result.success) {
+            return NextResponse.json(result, { status: statusFromCode(result.code) });
+        }
+
+        return NextResponse.json(result, { status: 200 });
+    } catch (error) {
+        console.error(`PATCH /api/categories failed: ${error instanceof Error ? error.message : error}`);
+        return NextResponse.json({ success: false, error: 'Failed to update category' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    try {
+        await connectToDatabase();
+        const body = await request.json();
+        const categoryId = body._id || body.id;
+
+        if (!categoryId) {
+            return NextResponse.json({ success: false, error: 'Category id is required' }, { status: 400 });
+        }
+
+        const result = await categoryService.delete(categoryId);
+
+        if (!result.success) {
+            return NextResponse.json(result, { status: statusFromCode(result.code) });
+        }
+
+        return NextResponse.json(result, { status: 200 });
+    } catch (error) {
+        console.error(`DELETE /api/categories failed: ${error instanceof Error ? error.message : error}`);
+        return NextResponse.json({ success: false, error: 'Failed to delete category' }, { status: 500 });
+    }
 }

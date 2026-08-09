@@ -11,22 +11,22 @@ export interface RoleShort {
 
 
 export interface AccountShort {
-  _id: string;
-  userId: string;
-  type: 'oauth' | 'credential';
-  
-  // После .populate() providerId становится объектом, а не строкой
-  providerId: {
     _id: string;
-    name: string; // 'google', 'github', 'yandex', 'credentials'
-  };
-  
-  // Перенесён на верхний уровень (как в новой схеме Mongoose)
-  providerAccountId?: string; 
-  
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
+    userId: string;
+    type: 'oauth' | 'credential';
+
+    // После .populate() providerId становится объектом, а не строкой
+    providerId: {
+        _id: string;
+        name: string; // 'google', 'github', 'yandex', 'credentials'
+    };
+
+    // Перенесён на верхний уровень (как в новой схеме Mongoose)
+    providerAccountId?: string;
+
+    avatar?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface BusinessProfileShort {
@@ -281,7 +281,9 @@ export interface ProductStoreState {
     selectedProduct: ProductShort | null;
     isLoading: boolean;
     avatarVersions: Record<string, number>;
-
+    categoryFilter: string | null;
+    
+    setCategoryFilter: (categoryId: string | null) => void;
     setSelectedProduct: (product: ProductShort | null) => void;
     setProducts: (items: ProductShort[], total: number) => void;
     setProductsLoading: (loading: boolean) => void;
@@ -297,4 +299,61 @@ export interface ProductStoreState {
         data: Partial<ProductInput>
     ) => Promise<{ success: boolean; error?: string; data?: ProductShort }>;
     deleteProduct: (_id: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+/**
+ *  AttributesCategorySchema
+ *  name - название
+ *  type - тип атрибута
+ *  unit - единица измерения
+ *  required - обязательность
+*/
+export interface AttributesCategory {
+    name: string;
+    type: string;
+    unit: string;
+    required: boolean;
+}
+
+/**
+ * Category Schema
+ * 
+ * code - уникальный идентификатор
+ * name - название
+ * description - описание
+ * parent - родительская категория
+ * {
+ *  type: Schema.Types.ObjectId,
+ *  ref: 'Category' - рекурсивное связывание
+ *  default: null
+ * }
+ * level - уровень вложенности
+ * attributes - атрибуты
+ * isActive - активность
+ * createdAt - дата создания
+ * updatedAt - дата обновления
+ */
+export interface CategoryShort {
+    _id: string;
+    code: string;
+    name: string;
+    description: string;
+    parent: string | null;
+    level: number;
+    attributes: string[];
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CategoryStoreState {
+    categories: CategoryShort[] | null;
+    fetchCategories: () => Promise<void>;
+    createCategory: (data: Omit<CategoryShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string; data?: CategoryShort }>;
+    deleteCategory: (categoryId: string) => Promise<void>;
+    updateCategory: (categoryId: string, data: Omit<CategoryShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
+    setSelectedCategory: (category: CategoryShort | null) => void;
+    selectedCategory: CategoryShort | null;
+    isLoading: boolean;
+    error: string | null;
 }

@@ -19,6 +19,20 @@ const filterItems = <T extends Record<string, any>>( // eslint-disable-line
     );
 };
 
+// Совмещённая фильтрация: текстовый поиск + категория.
+// Вынесено в отдельную функцию, чтобы searchProducts/setCategoryFilter/setProducts
+// применяли ОБА фильтра одинаково — иначе легко рассинхронизировать пагинацию
+// (например, если поиск сбрасывает категорию или наоборот).
+const applyFilters = (
+    items: ProductShort[],
+    query: string | undefined,
+    categoryId: string | null
+): ProductShort[] => {
+    const q = query ?? '';
+    const bySearch = q.trim() ? filterItems(items, q, ['name', 'sku'] as (keyof ProductShort)[]) : items;
+    return categoryId ? bySearch.filter((p) => String(p.categoryId) === String(categoryId)) : bySearch;
+};
+
 const ITEMS_PER_PAGE = 6;
 
 export const useProductsStore = create<ProductStoreState>()(
@@ -39,24 +53,31 @@ export const useProductsStore = create<ProductStoreState>()(
             selectedProduct: null,
             isLoading: false,
             avatarVersions: {} as Record<string, number>,
+            categoryFilter: null as string | null,
 
             setSelectedProduct: (product) => set({ selectedProduct: product }),
 
-            setProducts: (items, total) =>
-                set((state) => ({
-                    products: {
-                        ...state.products,
-                        items,
-                        filteredItems: items,
-                        pagination: {
-                            page: 1,
-                            limit: ITEMS_PER_PAGE,
-                            total,
-                            totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+            setProducts: (items) =>
+                set((state) => {
+                    // Переприменяем активные фильтры (поиск + категория) к свежим данным,
+                    // а не сбрасываем их — иначе рефетч посреди активного фильтра
+                    // молча покажет все товары вместо отфильтрованных.
+                    const filtered = applyFilters(items, state.products.searchQuery, state.categoryFilter);
+                    return {
+                        products: {
+                            ...state.products,
+                            items,
+                            filteredItems: filtered,
+                            pagination: {
+                                page: 1,
+                                limit: ITEMS_PER_PAGE,
+                                total: filtered.length,
+                                totalPages: Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE)),
+                            },
+                            error: null,
                         },
-                        error: null,
-                    },
-                })),
+                    };
+                }),
 
             setProductsLoading: (loading) => set({ isLoading: loading }),
 
@@ -65,15 +86,36 @@ export const useProductsStore = create<ProductStoreState>()(
 
             searchProducts: (query) =>
                 set((state) => {
-                    const filtered = query.trim()
-                        ? filterItems(state.products.items, query, ['name', 'sku'] as (keyof ProductShort)[])
-                        : state.products.items;
+                    const filtered = applyFilters(state.products.items, query, state.categoryFilter);
                     return {
                         products: {
                             ...state.products,
                             searchQuery: query,
                             filteredItems: filtered,
-                            pagination: { ...state.products.pagination, page: 1 },
+                            pagination: {
+                                ...state.products.pagination,
+                                page: 1,
+                                total: filtered.length,
+                                totalPages: Math.max(1, Math.ceil(filtered.length / state.products.pagination.limit)),
+                            },
+                        },
+                    };
+                }),
+
+            setCategoryFilter: (categoryId) =>
+                set((state) => {
+                    const filtered = applyFilters(state.products.items, state.products.searchQuery, categoryId);
+                    return {
+                        categoryFilter: categoryId,
+                        products: {
+                            ...state.products,
+                            filteredItems: filtered,
+                            pagination: {
+                                ...state.products.pagination,
+                                page: 1,
+                                total: filtered.length,
+                                totalPages: Math.max(1, Math.ceil(filtered.length / state.products.pagination.limit)),
+                            },
                         },
                     };
                 }),
@@ -267,6 +309,7 @@ export const useProductsStore = create<ProductStoreState>()(
             // персистим только лёгкие вещи (в отличие от providerStore, где данных немного и персист полный)
             partialize: (state) => ({
                 avatarVersions: state.avatarVersions,
+                categoryFilter: state.categoryFilter,
                 products: {
                     ...state.products,
                     items: [],

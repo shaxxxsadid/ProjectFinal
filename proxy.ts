@@ -67,13 +67,15 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         return NextResponse.redirect(errorUrl);
     }
 
-    // 🔥 5. Публичные пути
-    // ⚠️ ВАЖНО: /api/product должен матчиться ТОЧНО или с "/" после,
-    // иначе startsWith ловит и /api/products (CRUD-роут), который должен
-    // требовать авторизации для не-GET методов.
+
     const isPublicProductPath =
         path === '/api/product' ||
         path.startsWith('/api/product/');
+
+    const isCategoriesPath =
+        path === '/api/categories' ||
+        path.startsWith('/api/categories/');
+    const isPublicCategoriesGet = isCategoriesPath && method === 'GET';
 
     const isPublicPath =
         path === '/' ||
@@ -84,6 +86,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         path.startsWith('/api/auth/') ||
         path.startsWith('/api/public/') ||
         isPublicProductPath ||
+        isPublicCategoriesGet ||
         path.startsWith('/api/avatar/');
 
     if (isPublicPath) {
@@ -117,7 +120,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         path.startsWith('/api/stock/') ||
         path.startsWith('/api/account/') ||
         path.startsWith('/api/warehouse/') ||
-        path.startsWith('/api/products'); // ← CRUD товаров тоже под admin-доступ
+        path.startsWith('/api/products') || // ← CRUD товаров тоже под admin-доступ
+        isCategoriesPath; // ← сюда попадают только не-GET (GET публичный, см. шаг 5)
 
     if (isAdminPath) {
         const role = (typeof token.role === 'string') ? token.role.toLowerCase().trim() : '';

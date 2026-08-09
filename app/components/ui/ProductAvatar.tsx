@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { fetchAvatar } from '@/app/lib/avatar';
 import Image from 'next/image';
@@ -40,28 +41,22 @@ const ProductAvatar = ({
     }
 
     let mounted = true;
-    const versionParam = avatarVersion ?? 0; // ✅ Всегда передаем число, даже 0
-
-    console.log('Fetching avatar for productId:', productId, 'with avatarVersion:', versionParam);
+    //сброс при смене productId/version, иначе останется старая картинка/скелетон вперемешку 
+    setIsLoading(true); //eslint-disable-line 
+    const versionParam = avatarVersion ?? 0;
 
     fetchAvatar(productId, 'product', 'id', versionParam)
       .then(res => {
         if (!mounted) return;
 
-        console.log('✅ Avatar API response:', res);
-
-        // Если success: true и data есть — всё ок
         if (res?.success && res.data) {
           setAvatar(res.data);
         } else {
-          // Если success: true но data нет — это нормально, показываем fallback
-          console.log('⚠️ Avatar not found for this version, using default');
           setAvatar(null);
         }
       })
-      .catch(err => {
+      .catch(() => {
         if (mounted) {
-          console.error('❌ Failed to fetch avatar:', err);
           setAvatar(null);
         }
       })
@@ -72,36 +67,59 @@ const ProductAvatar = ({
     return () => { mounted = false; };
   }, [productId, avatarVersion]);
 
-  if (isLoading) {
-    return <div className={cn('bg-gray-200 animate-pulse', sizeClasses[size], 'rounded-xl')} />;
-  }
-  if (avatar) {
-    console.log('Rendering avatar for productId:', productId, 'with avatarVersion:', avatarVersion || 'none');
-    const { w, h } = sizeMap[size];
-    return (
-      <Image
-        src={avatar}
-        width={w}
-        height={h}
-        alt={name}
-        className={cn(
-          'object-cover border border-border/50',
-          size === 'full' ? 'rounded-none' : 'rounded-xl',
-          sizeClasses[size]
-        )}
-        unoptimized={true}
-      />
-    );
-  }
+  const { w, h } = sizeMap[size];
+  const roundedClass = size === 'full' ? 'rounded-none' : 'rounded-xl';
 
   return (
-    <div className={cn(
-      'flex items-center justify-center font-semibold border border-border/50',
-      size === 'full' ? 'rounded-none' : 'rounded-xl',
-      sizeClasses[size],
-      'text-white'
-    )}>
-      {name.slice(0, 2).toUpperCase()}
+    <div className={cn('relative overflow-hidden', roundedClass, sizeClasses[size])}>
+      <AnimatePresence mode="wait" initial={false}>
+        {isLoading ? (
+          <motion.div
+            key="skeleton"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={cn('absolute inset-0 bg-foreground/10 animate-pulse', roundedClass)}
+          />
+        ) : avatar ? (
+          <motion.div
+            key="image"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={avatar}
+              width={w}
+              height={h}
+              alt={name}
+              className={cn(
+                'w-full h-full object-cover border border-border/50',
+                roundedClass
+              )}
+              unoptimized={true}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="fallback"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className={cn(
+              'absolute inset-0 flex items-center justify-center font-semibold border border-border/50',
+              'bg-foreground/10 text-foreground',
+              roundedClass
+            )}
+          >
+            {name.slice(0, 2).toUpperCase()}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
