@@ -230,7 +230,7 @@ export interface ProductShort {
     _id: string;
     name: string;
     sku: string;
-    categoryId: string;
+    categoryId: string[];
     price?: number;
 
     // Физические характеристики
@@ -281,9 +281,9 @@ export interface ProductStoreState {
     selectedProduct: ProductShort | null;
     isLoading: boolean;
     avatarVersions: Record<string, number>;
-    categoryFilter: string | null;
+    categoryFilter: string[] | null;
     
-    setCategoryFilter: (categoryId: string | null) => void;
+    setCategoryFilter: (categoryId: string[] | null) => void;
     setSelectedProduct: (product: ProductShort | null) => void;
     setProducts: (items: ProductShort[], total: number) => void;
     setProductsLoading: (loading: boolean) => void;
@@ -302,56 +302,65 @@ export interface ProductStoreState {
 }
 
 /**
- *  AttributesCategorySchema
- *  name - название
- *  type - тип атрибута
- *  unit - единица измерения
- *  required - обязательность
-*/
-export interface AttributesCategory {
-    name: string;
-    type: string;
-    unit: string;
-    required: boolean;
-}
-
-/**
  * Category Schema
  * 
- * code - уникальный идентификатор
- * name - название
- * description - описание
- * parent - родительская категория
- * {
- *  type: Schema.Types.ObjectId,
- *  ref: 'Category' - рекурсивное связывание
- *  default: null
- * }
- * level - уровень вложенности
- * attributes - атрибуты
- * isActive - активность
- * createdAt - дата создания
- * updatedAt - дата обновления
+ *  _id - уникальный идентификатор категории
+ *  code - код категории
+ *  name - название категории
+ *  description - описание категории
+ *  parent - родительская категория
+ *  level - уровень вложенности
+ *  attributes - атрибуты категории
+ *  isActive - активность категории
+ *  createdAt - дата создания
+ *  updatedAt - дата обновления
  */
+export type AttributeType = 'string' | 'number' | 'boolean' | 'date';
+
+export interface CategoryAttribute {
+    name: string;
+    type: AttributeType;
+    unit?: string;
+    required?: boolean;
+}
+
+export interface CategoryParentRef {
+    _id: string;
+    code: string;
+    name: string;
+    level?: number;
+}
+
 export interface CategoryShort {
     _id: string;
     code: string;
     name: string;
-    description: string;
-    parent: string | null;
+    description?: string;
+    parent: string | CategoryParentRef | null;
     level: number;
-    attributes: string[];
+    attributes: CategoryAttribute[];
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
 }
 
+export interface CategoryCreateInput {
+    code: string;
+    name: string;
+    description?: string;
+    parent?: string | null;
+    attributes: CategoryAttribute[];
+    isActive?: boolean;
+}
+
+export type CategoryUpdateInput = Partial<CategoryCreateInput>;
+
 export interface CategoryStoreState {
     categories: CategoryShort[] | null;
     fetchCategories: () => Promise<void>;
-    createCategory: (data: Omit<CategoryShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string; data?: CategoryShort }>;
+    createCategory: (data: CategoryCreateInput) => Promise<{ success: boolean; error?: string; data?: CategoryShort }>;
     deleteCategory: (categoryId: string) => Promise<void>;
-    updateCategory: (categoryId: string, data: Omit<CategoryShort, '_id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
+    updateCategory: (categoryId: string, data: CategoryUpdateInput) => Promise<{ success: boolean; error?: string }>;
     setSelectedCategory: (category: CategoryShort | null) => void;
     selectedCategory: CategoryShort | null;
     isLoading: boolean;

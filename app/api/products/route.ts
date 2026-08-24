@@ -1,12 +1,15 @@
-import { logger } from "@/app/lib/logger";
-import { connectToDatabase } from "@/app/lib/mongoose";
-import { productService } from "@/app/services/Product.service";
+import { logger } from '@/app/lib/logger';
+import { connectToDatabase } from '@/app/lib/mongoose';
+import { productService } from '@/app/services/Product.service';
 
 export async function GET() {
     try {
         await connectToDatabase();
         const products = await productService.getAllProducts();
-        return Response.json({ success: true, data: products, total: products.length }, { status: 200 });
+        return Response.json(
+            { success: true, data: products, total: products.length },
+            { status: 200 }
+        );
     } catch (error) {
         logger.error(`GET /api/products failed: ${error instanceof Error ? error.message : error}`);
         return Response.json({ success: false, error: 'Failed to fetch products' }, { status: 500 });
@@ -20,8 +23,9 @@ export async function POST(request: Request) {
         const newProduct = await productService.createProduct(productData);
         return Response.json({ success: true, data: newProduct }, { status: 201 });
     } catch (error) {
-        logger.error(`POST /api/products failed: ${error instanceof Error ? error.message : error}`);
-        return Response.json({ success: false, error: 'Failed to create product' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Failed to create product';
+        logger.error(`POST /api/products failed: ${message}`);
+        return Response.json({ success: false, error: message }, { status: 400 });
     }
 }
 
@@ -29,7 +33,14 @@ export async function PATCH(request: Request) {
     try {
         await connectToDatabase();
         const productData = await request.json();
-        const updatedProduct = await productService.updateProduct(productData._id, productData);
+        const { _id, ...updateData } = productData;
+
+        if (!_id) {
+            return Response.json({ success: false, error: 'Product id is required' }, { status: 400 });
+        }
+
+        // _id не передаём внутрь update payload — MongoDB запрещает изменять его.
+        const updatedProduct = await productService.updateProduct(_id, updateData);
 
         if (!updatedProduct) {
             return Response.json({ success: false, error: 'Product not found' }, { status: 404 });
@@ -45,8 +56,9 @@ export async function PATCH(request: Request) {
 
         return Response.json({ success: true, data: productWithAvatarUrl }, { status: 200 });
     } catch (error) {
-        logger.error(`PATCH /api/products failed: ${error instanceof Error ? error.message : error}`);
-        return Response.json({ success: false, error: 'Failed to update product' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Failed to update product';
+        logger.error(`PATCH /api/products failed: ${message}`);
+        return Response.json({ success: false, error: message }, { status: 400 });
     }
 }
 
@@ -54,6 +66,11 @@ export async function DELETE(request: Request) {
     try {
         await connectToDatabase();
         const { _id } = await request.json();
+
+        if (!_id) {
+            return Response.json({ success: false, error: 'Product id is required' }, { status: 400 });
+        }
+
         const deletedProduct = await productService.deleteProduct(_id);
         if (!deletedProduct) {
             return Response.json({ success: false, error: 'Product not found' }, { status: 404 });

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,7 @@ import { Pagination } from '@/app/components/ui/pagination';
 import { useDebounce } from '@/app/hooks/debounce';
 import { useProductsStore } from '@/app/store/productStore';
 import { useCategoryStore } from '@/app/store/categoryStore';
-import { ProductShort } from '@/types/store.types';
+import { CategoryParentRef, ProductShort } from '@/types/store.types';
 import ProductAvatar from '@/app/components/ui/ProductAvatar';
 import { ProductDetailModal } from '@/app/components/ui/product/modal/ProductDetailModal';
 
@@ -22,7 +22,7 @@ export default function ProductsCatalogPage() {
     selectedProduct,
     setSelectedProduct,
     avatarVersions,
-    categoryFilter,
+    categoryFilter, // Теперь это string[] | null
     setCategoryFilter,
   } = useProductsStore();
 
@@ -47,17 +47,92 @@ export default function ProductsCatalogPage() {
     setSearchInput(e.target.value);
   }, []);
 
+  // В товаре хранится полный путь categoryId: [level1, level2, ..., leaf].
+  // Поэтому для фильтра достаточно передать только выбранную категорию:
+  // совпадение с любым элементом product.categoryId автоматически включает её потомков.
   const handleCategoryClick = useCallback((categoryId: string | null) => {
-    setCategoryFilter(categoryId);
-  }, [setCategoryFilter]);
+    setProductPage(1);
 
-  // Быстрый lookup categoryId -> название категории для бейджа на карточке.
-  // Категории живут в отдельном сторе (не populate'ятся в /api/products),
-  // поэтому связываем их на клиенте.
+    if (!categoryId) {
+      setCategoryFilter(null);
+      return;
+    }
+
+    setCategoryFilter([String(categoryId)]);
+  }, [setCategoryFilter, setProductPage]);
+
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
     (categories ?? []).forEach((c) => map.set(String(c._id), c.name));
     return map;
+  }, [categories]);
+
+  // Подсветка родителей в сайдбаре
+  const activeParentIds = useMemo(() => {
+    if (!categoryFilter || categoryFilter.length === 0 || !categories) return [];
+    const parents = new Set<string>();
+
+    categoryFilter.forEach((filterId) => {
+      let currentId: string | null = filterId;
+      while (currentId) {
+        const cat = categories.find((c) => String(c._id) === String(currentId));
+        if (cat && cat.parent) {
+          const parentId = typeof cat.parent === 'string'
+            ? cat.parent
+            : (cat.parent as CategoryParentRef)._id;
+
+          if (parentId) {
+            parents.add(parentId);
+            currentId = parentId;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+    });
+
+    return Array.from(parents);
+  }, [categoryFilter, categories]);
+
+  // Иерархия для сайдбара
+  const hierarchicalCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+
+    const childrenMap = new Map<string, typeof categories>();
+    const roots: typeof categories = [];
+
+    categories.forEach((cat) => {
+      const parentId = typeof cat.parent === 'string'
+        ? cat.parent
+        : (cat.parent && typeof cat.parent === 'object' ? (cat.parent as CategoryParentRef)._id : null);
+
+      if (!parentId) {
+        roots.push(cat);
+      } else {
+        if (!childrenMap.has(parentId)) {
+          childrenMap.set(parentId, []);
+        }
+        childrenMap.get(parentId)!.push(cat);
+      }
+    });
+
+    const result: Array<typeof categories[0] & { indent: number }> = [];
+
+    const traverse = (nodes: typeof categories, level: number) => {
+      nodes.sort((a, b) => a.name.localeCompare(b.name));
+      for (const node of nodes) {
+        result.push({ ...node, indent: level });
+        const children = childrenMap.get(node._id) || [];
+        if (children.length > 0) {
+          traverse(children, level + 1);
+        }
+      }
+    };
+
+    traverse(roots, 0);
+    return result;
   }, [categories]);
 
   const handlePageChange = useCallback((page: number) => {
@@ -76,7 +151,6 @@ export default function ProductsCatalogPage() {
     [products.filteredItems, startIndex, products.pagination.limit]
   );
 
-  // Мемоизируем обработчик клика
   const handleProductClick = useCallback((product: ProductShort) => {
     setSelectedProduct(product);
   }, [setSelectedProduct]);
@@ -100,6 +174,8 @@ export default function ProductsCatalogPage() {
       </div>
     </div>
   );
+
+  const isAllCategoriesActive = !categoryFilter || categoryFilter.length === 0;
 
   return (
     <div className={cn(
@@ -128,7 +204,7 @@ export default function ProductsCatalogPage() {
                 <span className={cn(
                   'px-1.5 py-0.5 rounded text-sm border backdrop-blur-sm bg-background/5 border-background/10'
                 )}>
-                  {products.pagination.page} / {products.pagination.totalPages} стр.
+                  {products.pagination.page} / {actualTotalPages} стр.
                 </span>
               </div>
             </div>
@@ -171,7 +247,6 @@ export default function ProductsCatalogPage() {
               transition={{ duration: 0.35, delay: 0.15 }}
             >
               <div className="group/categories relative rounded-2xl border border-foreground/10 bg-foreground/5 backdrop-blur-md overflow-hidden">
-                {/* Заголовок блока */}
                 <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-foreground/10 bg-background/30">
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -186,7 +261,6 @@ export default function ProductsCatalogPage() {
                   </span>
                 </div>
 
-                {/* Скроллящийся список со скрытым скроллбаром */}
                 <div
                   className={cn(
                     'relative overflow-y-auto overflow-x-auto lg:overflow-x-hidden',
@@ -200,32 +274,51 @@ export default function ProductsCatalogPage() {
                       onClick={() => handleCategoryClick(null)}
                       className={cn(
                         'shrink-0 lg:shrink lg:w-full text-left px-3 py-2 rounded-xl text-sm font-medium border transition-colors duration-200',
-                        categoryFilter === null
+                        isAllCategoriesActive
                           ? 'bg-foreground text-background border-foreground'
                           : 'bg-foreground/5 text-muted-foreground border-foreground/10 hover:border-foreground/25'
                       )}
                     >
                       Все категории
                     </button>
-                    {categories?.map((category) => (
-                      <button
-                        key={category._id}
-                        onClick={() => handleCategoryClick(category._id)}
-                        className={cn(
-                          'shrink-0 lg:shrink lg:w-full text-left px-3 py-2 rounded-xl text-sm font-medium border transition-colors duration-200',
-                          categoryFilter === category._id
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'bg-foreground/5 text-muted-foreground border-foreground/10 hover:border-foreground/25'
-                        )}
-                      >
-                        {category.name}
-                      </button>
-                    ))}
+
+                    {hierarchicalCategories.map((category) => {
+                      const indentPx = category.indent * 16;
+                      const isDirectlyActive = categoryFilter?.includes(category._id) ?? false;
+                      const isParentOfActive = activeParentIds.includes(category._id);
+
+                      return (
+                        <button
+                          key={category._id}
+                          onClick={() => handleCategoryClick(category._id)}
+                          className={cn(
+                            'shrink-0 lg:shrink lg:w-full text-left py-2 rounded-xl text-sm font-medium border transition-colors duration-200 flex items-center gap-2',
+                            isDirectlyActive
+                              ? 'bg-foreground text-background border-foreground'
+                              : isParentOfActive
+                                ? 'bg-foreground/20 text-foreground border-foreground/30 font-semibold'
+                                : 'bg-foreground/5 text-muted-foreground border-foreground/10 hover:border-foreground/25'
+                          )}
+                          style={{ paddingLeft: `${12 + indentPx}px` }}
+                        >
+                          {category.indent > 0 && (
+                            <span className={cn(
+                              "text-xs select-none shrink-0 font-mono",
+                              (isDirectlyActive || isParentOfActive) ? "text-background/50" : "text-foreground/30"
+                            )}>
+                              └─
+                            </span>
+                          )}
+                          <span className="truncate">{category.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             </motion.div>
           )}
+
           {/* Products Grid */}
           <div className="relative w-full flex-1 min-w-0 py-4 lg:min-h-160 sm:min-h-120">
             {currentItems.length === 0 ? (
@@ -261,194 +354,204 @@ export default function ProductsCatalogPage() {
                     transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                     className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 w-full"
                   >
-                    {currentItems.map((product: ProductShort, index) => (
-                      <motion.div
-                        key={String(product._id)}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{
-                          duration: 0.3,
-                          delay: index * 0.04,
-                          ease: 'easeOut',
-                        }}
-                        onClick={() => handleProductClick(product)}
-                        className={cn(
-                          'group relative rounded-3xl p-6 cursor-pointer',
-                          'transition-[background-color,border-color,box-shadow] duration-300',
-                          'border backdrop-blur-sm bg-foreground/5 border-foreground/10',
-                          'hover:bg-foreground/10 hover:border-foreground/25 hover:shadow-xl',
-                          'min-h-72 flex flex-col justify-between'
-                        )}
-                      >
-                        {/* Верх: Аватар + Имя + Цена */}
-                        <div className="flex items-start gap-5">
-                          <ProductAvatar
-                            name={product.name}
-                            productId={product._id}
-                            avatarVersion={avatarVersions[String(product._id)]}
-                            size="lg"
-                          />
-                          <div className="flex-1 min-w-0 pt-1">
-                            <div className="flex items-start justify-between gap-3 mb-2">
-                              <div className="min-w-0">
-                                {categoryNameById.get(String(product.categoryId)) && (
-                                  <span className="inline-block mb-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-violet-500/10 text-violet-600 border border-violet-500/20 dark:text-violet-400">
-                                    {categoryNameById.get(String(product.categoryId))}
+                    {currentItems.map((product: ProductShort, index) => {
+                      //  Получаем самую конкретную категорию (последний элемент массива)
+                      const productCategoryIds = Array.isArray(product.categoryId)
+                        ? product.categoryId
+                        : [product.categoryId];
+                      const mostSpecificCategoryId = productCategoryIds[productCategoryIds.length - 1];
+                      const categoryName = categoryNameById.get(String(mostSpecificCategoryId));
+
+                      return (
+                        <motion.div
+                          key={String(product._id)}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{
+                            duration: 0.3,
+                            delay: index * 0.04,
+                            ease: 'easeOut',
+                          }}
+                          onClick={() => handleProductClick(product)}
+                          className={cn(
+                            'group relative rounded-3xl p-6 cursor-pointer',
+                            'transition-[background-color,border-color,box-shadow] duration-300',
+                            'border backdrop-blur-sm bg-foreground/5 border-foreground/10',
+                            'hover:bg-foreground/10 hover:border-foreground/25 hover:shadow-xl',
+                            'min-h-72 flex flex-col justify-between'
+                          )}
+                        >
+                          {/* Верх: Аватар + Имя + Цена */}
+                          <div className="flex items-start gap-5">
+                            <ProductAvatar
+                              name={product.name}
+                              productId={product._id}
+                              avatarVersion={avatarVersions[String(product._id)]}
+                              size="lg"
+                            />
+                            <div className="flex-1 min-w-0 pt-1">
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div className="min-w-0">
+                                  {categoryName && (
+                                    <span className="inline-block mb-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-violet-500/10 text-violet-600 border border-violet-500/20 dark:text-violet-400">
+                                      {categoryName}
+                                    </span>
+                                  )}
+                                  <h2 className="text-lg font-semibold leading-snug truncate text-foreground/90">
+                                    {product.name}
+                                  </h2>
+                                </div>
+                                {!!product.price && (
+                                  <span className="shrink-0 font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                    {product.price.toLocaleString('ru-RU', {
+                                      style: 'currency',
+                                      currency: 'RUB',
+                                      maximumFractionDigits: 0,
+                                    })}
                                   </span>
                                 )}
-                                <h2 className="text-lg font-semibold leading-snug truncate text-foreground/90">
-                                  {product.name}
-                                </h2>
                               </div>
-                              {!!product.price && (
-                                <span className="shrink-0 font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">
-                                  {product.price.toLocaleString('ru-RU', {
-                                    style: 'currency',
-                                    currency: 'RUB',
-                                    maximumFractionDigits: 0,
-                                  })}
+                              {/* Габариты и Вес в одну строку */}
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground/80">
+                                {product.width && product.height && product.length && (
+                                  <span className="font-mono">
+                                    {product.width}×{product.height}×{product.length} см
+                                  </span>
+                                )}
+                                {!!product.weight && (
+                                  <span className="font-mono">{product.weight} кг</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Низ: SKU + Сертификаты */}
+                          <div className="mb-2 pt-3 border-t border-foreground/10 flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-md text-muted-foreground">Код товара:</span>
+                              <span className="font-mono text-xs px-2 py-1 rounded-md bg-foreground/5 text-foreground/60 border border-foreground/10">
+                                {product.sku || '—'}
+                              </span>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              {product.isIPPC_Certified && (
+                                <span className={cn(
+                                  'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border',
+                                  'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
+                                )}>
+                                  IPPC
+                                </span>
+                              )}
+                              {product.isHeatTreated && (
+                                <span className={cn(
+                                  'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border',
+                                  'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400'
+                                )}>
+                                  HT
+                                </span>
+                              )}
+                              {product.certifications
+                                ?.filter((c) => c.value)
+                                .map((c) => (
+                                  <span
+                                    key={c.name}
+                                    className={cn(
+                                      'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border',
+                                      'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:text-sky-400'
+                                    )}
+                                  >
+                                    {c.name}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+
+                          {/* Логистика */}
+                          {(product.storageType || !!product.loadCapacity || !!product.volumeM3 || !!product.palletQuantity || product.expiryDate) && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground/70 mb-2">
+                              {product.storageType && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-foreground/5 border border-foreground/10 capitalize">
+                                  {product.storageType}
+                                </span>
+                              )}
+                              {!!product.loadCapacity && (
+                                <span className="font-mono">до {product.loadCapacity} кг</span>
+                              )}
+                              {!!product.volumeM3 && (
+                                <span className="font-mono">{product.volumeM3} м³</span>
+                              )}
+                              {!!product.palletQuantity && (
+                                <span className="font-mono">{product.palletQuantity} шт/паллет</span>
+                              )}
+                              {product.expiryDate && (
+                                <span className="font-mono text-amber-600 dark:text-amber-400">
+                                  годен до {new Date(product.expiryDate).toLocaleDateString('ru-RU')}
                                 </span>
                               )}
                             </div>
-                            {/* Габариты и Вес в одну строку */}
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground/80">
-                              {product.width && product.height && product.length && (
-                                <span className="font-mono">
-                                  {product.width}×{product.height}×{product.length} см
-                                </span>
+                          )}
+
+                          {/* Упаковка */}
+                          {(product.packaging?.unit || !!product.packaging?.quantityPerUnit) && (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground/70 mb-2">
+                              <span className="text-muted-foreground/50">Упаковка:</span>
+                              {!!product.packaging?.quantityPerUnit && (
+                                <span className="font-mono">{product.packaging.quantityPerUnit}</span>
                               )}
-                              {!!product.weight && (
-                                <span className="font-mono">{product.weight} кг</span>
+                              {product.packaging?.unit && (
+                                <span className="font-mono">{product.packaging.unit}</span>
                               )}
                             </div>
-                          </div>
-                        </div>
+                          )}
 
-                        {/* Низ: SKU + Сертификаты */}
-                        <div className="mb-2 pt-3 border-t border-foreground/10 flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-md text-muted-foreground">Код товара:</span>
-                            <span className="font-mono text-xs px-2 py-1 rounded-md bg-foreground/5 text-foreground/60 border border-foreground/10">
-                              {product.sku || '—'}
-                            </span>
-                          </div>
-                          <div className="flex gap-2 flex-wrap">
-                            {product.isIPPC_Certified && (
-                              <span className={cn(
-                                'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border',
-                                'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
-                              )}>
-                                IPPC
-                              </span>
-                            )}
-                            {product.isHeatTreated && (
-                              <span className={cn(
-                                'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border',
-                                'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400'
-                              )}>
-                                HT
-                              </span>
-                            )}
-                            {product.certifications
-                              ?.filter((c) => c.value)
-                              .map((c) => (
-                                <span
-                                  key={c.name}
-                                  className={cn(
-                                    'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border',
-                                    'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:text-sky-400'
-                                  )}
-                                >
-                                  {c.name}
+                          {/* Условия хранения */}
+                          {(product.storageConditions?.temperatureMin != null || product.storageConditions?.temperatureMax != null || product.storageConditions?.humidityMax != null) && (
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              {(product.storageConditions?.temperatureMin != null || product.storageConditions?.temperatureMax != null) && (
+                                <span className={cn(
+                                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border',
+                                  'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:text-cyan-400'
+                                )}>
+                                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9a3 3 0 00-3 3v5.25a3 3 0 106 0V12a3 3 0 00-3-3zm0 0V4.5" />
+                                  </svg>
+                                  {product.storageConditions?.temperatureMin ?? '…'}…{product.storageConditions?.temperatureMax ?? '…'}°C
                                 </span>
-                              ))}
-                          </div>
-                        </div>
+                              )}
+                              {product.storageConditions?.humidityMax != null && (
+                                <span className={cn(
+                                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border',
+                                  'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
+                                )}>
+                                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.5s6 6.4 6 10.5a6 6 0 11-12 0c0-4.1 6-10.5 6-10.5z" />
+                                  </svg>
+                                  ≤{product.storageConditions.humidityMax}%
+                                </span>
+                              )}
+                            </div>
+                          )}
 
-                        {/* Логистика — только то, что реально пришло от API. 0 трактуем как «нет данных», не как реальное значение */}
-                        {(product.storageType || !!product.loadCapacity || !!product.volumeM3 || !!product.palletQuantity || product.expiryDate) && (
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground/70 mb-2">
-                            {product.storageType && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-foreground/5 border border-foreground/10 capitalize">
-                                {product.storageType}
-                              </span>
-                            )}
-                            {!!product.loadCapacity && (
-                              <span className="font-mono">до {product.loadCapacity} кг</span>
-                            )}
-                            {!!product.volumeM3 && (
-                              <span className="font-mono">{product.volumeM3} м³</span>
-                            )}
-                            {!!product.palletQuantity && (
-                              <span className="font-mono">{product.palletQuantity} шт/паллет</span>
-                            )}
-                            {product.expiryDate && (
-                              <span className="font-mono text-amber-600 dark:text-amber-400">
-                                годен до {new Date(product.expiryDate).toLocaleDateString('ru-RU')}
-                              </span>
-                            )}
+                          {/* Hover hint */}
+                          <div className={cn(
+                            'absolute bottom-4 right-4 flex items-center gap-1.5 text-xs text-muted-foreground/50',
+                            'opacity-0 group-hover:opacity-100 transition-opacity duration-200'
+                          )}>
+                            Подробнее
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
                           </div>
-                        )}
-
-                        {/* Упаковка (packaging) — вложенный объект схемы, оба подполя опциональны, 0 трактуем как «нет данных» */}
-                        {(product.packaging?.unit || !!product.packaging?.quantityPerUnit) && (
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground/70 mb-2">
-                            <span className="text-muted-foreground/50">Упаковка:</span>
-                            {!!product.packaging?.quantityPerUnit && (
-                              <span className="font-mono">{product.packaging.quantityPerUnit}</span>
-                            )}
-                            {product.packaging?.unit && (
-                              <span className="font-mono">{product.packaging.unit}</span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Условия хранения (storageConditions) — выделено отдельным бейджем с иконками, чтобы не сливалось с остальным текстом */}
-                        {(product.storageConditions?.temperatureMin != null || product.storageConditions?.temperatureMax != null || product.storageConditions?.humidityMax != null) && (
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            {(product.storageConditions?.temperatureMin != null || product.storageConditions?.temperatureMax != null) && (
-                              <span className={cn(
-                                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border',
-                                'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:text-cyan-400'
-                              )}>
-                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9a3 3 0 00-3 3v5.25a3 3 0 106 0V12a3 3 0 00-3-3zm0 0V4.5" />
-                                </svg>
-                                {product.storageConditions?.temperatureMin ?? '…'}…{product.storageConditions?.temperatureMax ?? '…'}°C
-                              </span>
-                            )}
-                            {product.storageConditions?.humidityMax != null && (
-                              <span className={cn(
-                                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border',
-                                'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
-                              )}>
-                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.5s6 6.4 6 10.5a6 6 0 11-12 0c0-4.1 6-10.5 6-10.5z" />
-                                </svg>
-                                ≤{product.storageConditions.humidityMax}%
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Hover hint */}
-                        <div className={cn(
-                          'absolute bottom-4 right-4 flex items-center gap-1.5 text-xs text-muted-foreground/50',
-                          'opacity-0 group-hover:opacity-100 transition-opacity duration-200'
-                        )}>
-                          Подробнее
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </motion.div>
                 </AnimatePresence>
               </div>
             )}
           </div>
         </div>
+
         {/* Pagination */}
         {actualTotalPages > 1 && (
           <motion.div

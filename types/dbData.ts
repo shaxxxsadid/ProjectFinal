@@ -129,7 +129,7 @@ export interface IProduct {
     _id?: ObjectId;
     sku: string;
     name: string;
-    categoryId: ObjectId;
+    categoryId: ObjectId[];
     price: number;
     length?: number;
     width?: number;
@@ -151,7 +151,7 @@ export interface IUpdateProduct {
     _id: ObjectId;
     sku?: string;
     name?: string;
-    categoryId?: ObjectId;
+    categoryId?: ObjectId[];
     price?: number;
     length?: number;
     width?: number;
@@ -170,7 +170,7 @@ export interface IUpdateProduct {
 export interface ICreateProduct {
     sku: string;
     name: string;
-    categoryId: string;
+    categoryId: string[];
     price: number;
     length?: number;
     width?: number;
@@ -322,7 +322,7 @@ export interface ICategory {
     name: string;                       // Отображаемое имя
     description?: string;               // Описание категории
     parent: ObjectId | null;            // Для иерархии (подкатегории)
-    level: number;                      // Уровень вложенности (0 для корневых категорий)
+    level: number;                      // Уровень вложенности (1 для корневых категорий)
     attributes: CategoryAttribute[];    // Атрибуты для фильтрации и поиска товаров в категории
     isActive?: boolean;                 // Активна ли категория
     createdAt?: Date;

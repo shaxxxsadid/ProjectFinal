@@ -29,7 +29,7 @@ export interface CategoryFilterDTO {
     search?: string;                                     // Строка поиска по имени или коду категории
     isActive?: boolean;                                  // Активна ли категория
     parent?: string | null;                              // Для иерархии (подкатегории)
-    level?: number;                                      // Уровень вложенности (0 для корневых категорий)
+    level?: number;                                      // Уровень вложенности (1 для корневых категорий)
 }
 
 // Узел дерева категорий (для UI)
@@ -115,7 +115,7 @@ class CategoryService {
                 parent: dto.parent ? new Types.ObjectId(dto.parent) : null,
                 level,
                 attributes: dto.attributes || [],
-                isActive: true,
+                isActive: dto.isActive ?? true,
             };
 
             const category = await Category.create(categoryData as ICategory);
@@ -148,7 +148,7 @@ class CategoryService {
             if (filter.level !== undefined) query.level = filter.level;
 
             const categories = await Category.find(query)
-                .populate({ path: 'parent', select: 'code name' })
+                .populate({ path: 'parent', select: 'code name level' })
                 .sort({ level: 1, name: 1 })
                 .lean();
 
@@ -176,7 +176,8 @@ class CategoryService {
 
     async getById(id: string): Promise<CategoryServiceResult<ICategory>> {
         try {
-            const category = await Category.findById(id);
+            const category = await Category.findById(id)
+                .populate({ path: 'parent', select: 'code name level' });
             if (!category) {
                 return {
                     success: false,
@@ -201,9 +202,10 @@ class CategoryService {
                 .sort({ level: 1, name: 1 })
                 .lean();
 
-            // Считаем количество товаров в каждой категории
+            // categoryId товара хранит полный путь [root, ..., leaf].
+            // $unwind позволяет посчитать один товар на каждом уровне его ветки.
             const productsCountByCategory = await Products.aggregate([
-                { $match: { isActive: true } },
+                { $unwind: '$categoryId' },
                 { $group: { _id: '$categoryId', count: { $sum: 1 } } },
             ]);
 
@@ -263,7 +265,6 @@ class CategoryService {
                 return { success: false, error: 'Категория не найдена', code: CATEGORY_ERRORS.NOT_FOUND };
             }
 
-            // Проверка уникальности нового кода
             if (dto.code && dto.code.toUpperCase() !== category.code) {
                 const existing = await Category.findOne({ code: dto.code.toUpperCase() });
                 if (existing) {
@@ -276,9 +277,23 @@ class CategoryService {
                 category.code = dto.code.toUpperCase();
             }
 
-            // Обновление родителя и пересчёт уровня
-            if (dto.parent !== undefined) {
-                if (dto.parent === id) {
+            let parentChanged = false;
+
+            if ('parent' in dto) {
+                const parentValue = dto.parent === '' || dto.parent === undefined ? null : dto.parent;
+                const oldParentId = category.parent ? String(category.parent) : null;
+                const nextParentId = parentValue ? String(parentValue) : null;
+                parentChanged = oldParentId !== nextParentId;
+
+                if (nextParentId && !mongoose.Types.ObjectId.isValid(nextParentId)) {
+                    return {
+                        success: false,
+                        error: 'Некорректный ID родительской категории',
+                        code: CATEGORY_ERRORS.INVALID_PARENT,
+                    };
+                }
+
+                if (nextParentId === id) {
                     return {
                         success: false,
                         error: 'Категория не может быть родителем сама себе',
@@ -286,11 +301,19 @@ class CategoryService {
                     };
                 }
 
-                if (dto.parent === null) {
+                if (nextParentId && await this.wouldCreateCycle(id, nextParentId)) {
+                    return {
+                        success: false,
+                        error: 'Нельзя назначить дочернюю категорию родителем: возникнет цикл',
+                        code: CATEGORY_ERRORS.INVALID_PARENT,
+                    };
+                }
+
+                if (!nextParentId) {
                     category.parent = null;
                     category.level = 1;
                 } else {
-                    const parent = await Category.findById(dto.parent);
+                    const parent = await Category.findById(nextParentId);
                     if (!parent) {
                         return {
                             success: false,
@@ -302,11 +325,10 @@ class CategoryService {
                     category.level = parent.level + 1;
                 }
 
-                // Рекурсивно обновляем уровни всех дочерних категорий
-                await this.updateChildrenLevels(id, category.level);
+                category.markModified('parent');
+                category.markModified('level');
             }
 
-            // Обновление остальных полей
             if (dto.name !== undefined) category.name = dto.name.trim();
             if (dto.description !== undefined) category.description = dto.description.trim();
             if (dto.isActive !== undefined) category.isActive = dto.isActive;
@@ -317,15 +339,31 @@ class CategoryService {
                     return { success: false, error: attrError, code: CATEGORY_ERRORS.INVALID_ATTRIBUTE };
                 }
                 category.attributes = dto.attributes;
+                category.markModified('attributes');
             }
 
+            // Сначала сохраняем сам узел. Model middleware дополнительно проверит
+            // parent и пересчитает level как последнюю линию защиты.
             await category.save();
-            logger.info(`Category updated: ${category.code}`);
 
+            if (parentChanged) {
+                // Уровни всех потомков зависят от нового уровня перемещённого узла.
+                await this.updateChildrenLevels(id, category.level);
+
+                // Товары хранят полный путь категорий, поэтому при перемещении
+                // ветки их categoryId необходимо перестроить.
+                await this.rebuildProductCategoryPathsForSubtree(id);
+            }
+
+            logger.info(`Category updated: ${category.code}`);
             return { success: true, data: category };
         } catch (error) {
             logger.error('CategoryService.update failed', error);
-            return { success: false, error: 'Ошибка при обновлении категории', code: 'UPDATE_ERROR' };
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Ошибка при обновлении категории',
+                code: 'UPDATE_ERROR',
+            };
         }
     }
 
@@ -398,13 +436,34 @@ class CategoryService {
 
     async getCategoryChain(id: string): Promise<CategoryServiceResult<ICategory[]>> {
         try {
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                return { success: false, error: 'Некорректный ID категории', code: 'INVALID_ID' };
+            }
+
             const chain: ICategory[] = [];
+            const visited = new Set<string>();
             let currentId: string | null = id;
 
             while (currentId) {
+                if (visited.has(currentId)) {
+                    return {
+                        success: false,
+                        error: 'Обнаружен цикл в иерархии категорий',
+                        code: CATEGORY_ERRORS.INVALID_PARENT,
+                    };
+                }
+                visited.add(currentId);
+
                 const cat: ICategory | null = await Category.findById(currentId);
-                if (!cat) break;
-                chain.unshift(cat); // Добавляем в начало, чтобы корень был первым
+                if (!cat) {
+                    return {
+                        success: false,
+                        error: `Категория не найдена: ${currentId}`,
+                        code: CATEGORY_ERRORS.NOT_FOUND,
+                    };
+                }
+
+                chain.unshift(cat);
                 currentId = cat.parent?.toString() || null;
             }
 
@@ -511,9 +570,102 @@ class CategoryService {
         }
         return null;
     }
-    private async updateChildrenLevels(parentId: string, parentLevel: number): Promise<void> {
+    /** Проверяет, не станет ли новый parent потомком самой категории. */
+    private async wouldCreateCycle(categoryId: string, candidateParentId: string): Promise<boolean> {
+        const visited = new Set<string>();
+        let currentId: string | null = candidateParentId;
+
+        while (currentId) {
+            if (currentId === categoryId) return true;
+            if (visited.has(currentId)) return true;
+            visited.add(currentId);
+
+            const current = await Category.findById(currentId)
+                .select('_id parent')
+                .lean() as { _id: Types.ObjectId; parent?: Types.ObjectId | null } | null;
+
+            if (!current) return false;
+            currentId = current.parent ? String(current.parent) : null;
+        }
+
+        return false;
+    }
+
+    /** Возвращает ID корня ветки и всех его потомков. */
+    private async getSubtreeIds(rootId: string): Promise<string[]> {
+        const result: string[] = [];
+        const queue: string[] = [rootId];
+        const visited = new Set<string>();
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            if (visited.has(currentId)) continue;
+            visited.add(currentId);
+            result.push(currentId);
+
+            const children = await Category.find({ parent: new Types.ObjectId(currentId) })
+                .select('_id')
+                .lean() as Array<{ _id: Types.ObjectId }>;
+
+            children.forEach((child) => queue.push(String(child._id)));
+        }
+
+        return result;
+    }
+
+    /**
+     * После переноса категории перестраивает categoryId товаров всей ветки.
+     * Leaf берётся из последнего элемента существующего categoryId, после чего
+     * путь заново строится по актуальным Category.parent.
+     */
+    private async rebuildProductCategoryPathsForSubtree(rootId: string): Promise<void> {
+        const subtreeIds = await this.getSubtreeIds(rootId);
+        const objectIds = subtreeIds.map((id) => new Types.ObjectId(id));
+
+        const products = await Products.find({
+            categoryId: { $in: objectIds },
+        }).select('_id categoryId');
+
+        for (const product of products) {
+            const rawPath = Array.isArray(product.categoryId)
+                ? product.categoryId
+                : [product.categoryId];
+            const leafId = rawPath.length > 0 ? String(rawPath[rawPath.length - 1]) : '';
+
+            if (!leafId || !mongoose.Types.ObjectId.isValid(leafId)) {
+                logger.warn(`Product ${String(product._id)} has invalid category path`);
+                continue;
+            }
+
+            const chain = await this.getCategoryChain(leafId);
+            if (!chain.success || !chain.data) {
+                logger.warn(`Failed to rebuild category path for product ${String(product._id)}: ${chain.error}`);
+                continue;
+            }
+
+            const canonicalPath = chain.data
+                .map((category) => category._id)
+                .filter(Boolean);
+
+            await Products.updateOne(
+                { _id: product._id },
+                { $set: { categoryId: canonicalPath, updatedAt: new Date() } }
+            );
+        }
+    }
+
+    private async updateChildrenLevels(
+        parentId: string,
+        parentLevel: number,
+        visited = new Set<string>()
+    ): Promise<void> {
+        if (visited.has(parentId)) {
+            throw new Error('Category hierarchy contains a cycle');
+        }
+        visited.add(parentId);
+
         const parentObjectId = new Types.ObjectId(parentId);
-        const children = await Category.find({ parent: parentObjectId } as any); //eslint-disable-line
+        const children = await Category.find({ parent: parentObjectId } as any); // eslint-disable-line
 
         for (const child of children) {
             child.level = parentLevel + 1;
@@ -521,9 +673,10 @@ class CategoryService {
                 { _id: child._id },
                 { $set: { level: child.level } }
             );
-            await this.updateChildrenLevels(child._id.toString(), child.level);
+            await this.updateChildrenLevels(child._id.toString(), child.level, visited);
         }
     }
+
 }
 
 export const categoryService = new CategoryService();

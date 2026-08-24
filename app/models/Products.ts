@@ -6,7 +6,7 @@ import { Schema, model, models } from 'mongoose';
         _id: ObjectId,
         sku: String,        // уникальное поле
         name: String,
-        categoryId: ObjectId,
+        categoryId: ObjectId[], // путь категории: [Level 1, Level 2, ..., leaf]
         price: Number,
         length: Number,
         width: Number,
@@ -38,61 +38,63 @@ import { Schema, model, models } from 'mongoose';
         updatedAt: Date
     }
 */
- 
 const productSchema = new Schema({
-    sku: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
-    price: { type: Number, required: true },
- 
-    // Физические характеристики — плоские, совместимо с текущими документами
-    length: { type: Number },
-    width: { type: Number },
-    height: { type: Number },
-    weight: { type: Number },
- 
-    // Логистика
-    loadCapacity: { type: Number },
-    volumeM3: { type: Number },
-    palletQuantity: { type: Number },
-    storageType: {
-        type: String,
-        enum: ['сыпучие', 'навал', 'настольные', 'контейнеры'],
+  sku: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  
+  // Полный путь категории: [Level 1, Level 2, ..., самая конкретная категория].
+  // Это позволяет фильтровать каталог по любому уровню дерева одним ID.
+  categoryId: {
+    type: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
+    required: true,
+    validate: {
+      validator: (ids: unknown[]) => Array.isArray(ids) && ids.length > 0,
+      message: 'Product must have at least one category',
     },
-    packaging: {
-        unit: { type: String, enum: ['шт', 'кг', 'м', 'паллет'] },
-        quantityPerUnit: { type: Number },
+  },
+  
+  price: { type: Number, required: true },
+  length: { type: Number },
+  width: { type: Number },
+  height: { type: Number },
+  weight: { type: Number },
+  loadCapacity: { type: Number },
+  volumeM3: { type: Number },
+  palletQuantity: { type: Number },
+  storageType: {
+    type: String,
+    enum: ['сыпучие', 'навал', 'настольные', 'контейнеры'],
+  },
+  packaging: {
+    unit: { type: String, enum: ['шт', 'кг', 'м', 'паллет'] },
+    quantityPerUnit: { type: Number },
+  },
+  storageConditions: {
+    temperatureMin: { type: Number },
+    temperatureMax: { type: Number },
+    humidityMax: { type: Number },
+  },
+  isHeatTreated: { type: Boolean },
+  isIPPC_Certified: { type: Boolean },
+  expiryDate: { type: Date, required: false },
+  certifications: [
+    {
+      name: { type: String },
+      value: { type: Boolean },
     },
-    storageConditions: {
-        temperatureMin: { type: Number },
-        temperatureMax: { type: Number },
-        humidityMax: { type: Number },
-    },
- 
-    // Отраслевые проверки
-    isHeatTreated: { type: Boolean },
-    isIPPC_Certified: { type: Boolean },
-    expiryDate: { type: Date, required: false },
-    certifications: [
-        {
-            name: { type: String },
-            value: { type: Boolean },
-        },
-    ],
- 
-    avatar: {
-        fileName: { type: String },
-        type: { type: String },
-        data: { type: Buffer },
-    },
- 
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
+  ],
+  avatar: {
+    fileName: { type: String },
+    type: { type: String },
+    data: { type: Buffer },
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
- 
+
 productSchema.index({ categoryId: 1 });
 productSchema.index({ isIPPC_Certified: 1 });
 productSchema.index({ storageType: 1 });
 productSchema.index({ expiryDate: 1 });
- 
+
 export const Products = models['Products'] || model('Products', productSchema, 'Products');

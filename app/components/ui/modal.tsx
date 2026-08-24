@@ -1,22 +1,29 @@
 // components/ui/FormModal.tsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Image from 'next/image';
 import { useDebounce } from '@/app/hooks/debounce';
 
+export interface CategoryChildCreateData {
+  name: string;
+  code: string;
+}
+
 export interface FieldOption {
   value: string;
   label: string;
   disabled?: boolean;
+  // Для каскадных select: null = корневая опция, строка = ID родителя.
+  parentValue?: string | null;
 }
 
 export interface FieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'image-url' | 'checkbox' | 'hidden' | 'file' | 'group';
+  type: 'text' | 'password' | 'email' | 'number' | 'textarea' | 'select' | 'category-cascade' | 'image-url' | 'checkbox' | 'hidden' | 'file' | 'group';
   required?: boolean;
   autoComplete?: string;
   initialValue?: string;
@@ -28,6 +35,10 @@ export interface FieldConfig {
   step?: string;
   accept?: string;
   onFileSelect?: (file: File | null, fieldName: string) => Promise<string | void>;
+  onCreateChild?: (
+    parentId: string,
+    data: CategoryChildCreateData
+  ) => Promise<{ success: boolean; error?: string; id?: string }>;
   children?: FieldConfig[];
   gridCols?: number;
 }
@@ -369,6 +380,247 @@ const SelectField = ({
   );
 };
 
+const CategoryCascadeField = ({
+  label, value, onChange, options, required, placeholder, onCreateChild,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: FieldOption[];
+  required?: boolean;
+  placeholder?: string;
+  onCreateChild?: (
+    parentId: string,
+    data: CategoryChildCreateData
+  ) => Promise<{ success: boolean; error?: string; id?: string }>;
+}) => {
+  const [createParent, setCreateParent] = useState<{
+    id: string;
+    label: string;
+    levelIndex: number;
+  } | null>(null);
+  const [childName, setChildName] = useState('');
+  const [childCode, setChildCode] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const selectedIds = value
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  const levels: Array<{
+    parentValue: string | null;
+    options: FieldOption[];
+    selectedValue: string;
+  }> = [];
+
+  let parentValue: string | null = null;
+  let levelIndex = 0;
+
+  while (levelIndex <= options.length) {
+    const levelOptions = options
+      .filter((option) => (option.parentValue ?? null) === parentValue)
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    if (levelOptions.length === 0) break;
+
+    const selectedValue = selectedIds[levelIndex] ?? '';
+    levels.push({ parentValue, options: levelOptions, selectedValue });
+
+    if (!selectedValue) break;
+
+    parentValue = selectedValue;
+    levelIndex += 1;
+  }
+
+  const handleLevelChange = (level: number, nextValue: string) => {
+    const nextPath = selectedIds.slice(0, level);
+    if (nextValue) nextPath[level] = nextValue;
+    onChange(nextPath.join(','));
+    setCreateParent(null);
+    setCreateError('');
+  };
+
+  const openCreateChild = (parentId: string, parentLabel: string, level: number) => {
+    setCreateParent({ id: parentId, label: parentLabel, levelIndex: level });
+    setChildName('');
+    setChildCode('');
+    setCreateError('');
+  };
+
+  const closeCreateChild = (force = false) => {
+    if (creating && !force) return;
+    setCreateParent(null);
+    setChildName('');
+    setChildCode('');
+    setCreateError('');
+  };
+
+  const submitCreateChild = async () => {
+    if (!createParent || !onCreateChild) return;
+
+    const name = childName.trim();
+    const code = childCode.trim().toUpperCase();
+
+    if (!name || !code) {
+      setCreateError('Укажите название и код подкатегории');
+      return;
+    }
+
+    setCreating(true);
+    setCreateError('');
+
+    try {
+      const result = await onCreateChild(createParent.id, { name, code });
+      if (!result.success) {
+        setCreateError(result.error || 'Не удалось создать подкатегорию');
+        return;
+      }
+
+      // Родитель уже находится в пути. Если backend вернул ID новой категории,
+      // сразу выбираем её как следующий уровень.
+      if (result.id) {
+        const nextPath = selectedIds.slice(0, createParent.levelIndex + 1);
+        nextPath.push(String(result.id));
+        onChange(nextPath.join(','));
+      }
+
+      closeCreateChild(true);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : 'Не удалось создать подкатегорию');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-foreground">
+        {label}
+        {required && <span className="text-destructive ml-0.5">*</span>}
+      </label>
+
+      {levels.length === 0 ? (
+        <div className="px-3 py-3 rounded-lg border border-border/50 bg-muted/30 text-sm text-muted-foreground">
+          {placeholder || 'Нет доступных категорий'}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {levels.map((level, index) => {
+            const selectedOption = level.options.find((option) => option.value === level.selectedValue);
+
+            return (
+              <div key={`${level.parentValue ?? 'root'}-${index}`} className="space-y-2">
+                <div className="relative">
+                  <div className="mb-1.5 text-xs font-medium text-muted-foreground">
+                    Level {index + 1}
+                  </div>
+                  <select
+                    value={level.selectedValue}
+                    onChange={(e) => handleLevelChange(index, e.target.value)}
+                    required={required && index === 0}
+                    className={cn(
+                      "w-full px-3 py-3 bg-muted/30 rounded-lg",
+                      "text-sm text-foreground outline-none border-2",
+                      "border-transparent focus:border-primary/50",
+                      "appearance-none cursor-pointer pr-10"
+                    )}
+                  >
+                    <option value="" className="bg-background text-muted-foreground">
+                      {index === 0 ? (placeholder || 'Выберите категорию') : `Выберите Level ${index + 1}...`}
+                    </option>
+                    {level.options.map((option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                        disabled={option.disabled}
+                        className="bg-background text-foreground"
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 bottom-3.5 pointer-events-none">
+                    <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {onCreateChild && level.selectedValue && selectedOption && (
+                  <button
+                    type="button"
+                    onClick={() => openCreateChild(level.selectedValue, selectedOption.label, index)}
+                    className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    + Добавить подкатегорию к «{selectedOption.label}»
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {createParent && (
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Новая подкатегория</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Родитель: {createParent.label} · будущий Level {createParent.levelIndex + 2}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={childName}
+              onChange={(e) => setChildName(e.target.value)}
+              placeholder="Название, например Ноутбуки"
+              className={cn(
+                "w-full px-3 py-2.5 rounded-lg bg-background/70 border border-border/60",
+                "text-sm text-foreground outline-none focus:border-primary/50"
+              )}
+            />
+            <input
+              type="text"
+              value={childCode}
+              onChange={(e) => setChildCode(e.target.value.toUpperCase())}
+              placeholder="Код, например LAPTOPS"
+              className={cn(
+                "w-full px-3 py-2.5 rounded-lg bg-background/70 border border-border/60",
+                "text-sm font-mono text-foreground outline-none focus:border-primary/50"
+              )}
+            />
+          </div>
+
+          {createError && <p className="text-xs text-destructive">{createError}</p>}
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => closeCreateChild()}
+              disabled={creating}
+              className="px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={submitCreateChild}
+              disabled={creating || !childName.trim() || !childCode.trim()}
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {creating ? 'Создание...' : 'Создать подкатегорию'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TextareaField = ({
   label, value, onChange, required, placeholder
 }: {
@@ -415,9 +667,10 @@ export const FormModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
       setError('');
       setSuccess('');
       setLoading(false);
@@ -430,6 +683,8 @@ export const FormModal = ({
       setFormData(initForm);
       setVisibility(initVis);
     }
+
+    wasOpenRef.current = isOpen;
   }, [isOpen, fields]);
 
   useEffect(() => {
@@ -526,7 +781,7 @@ export const FormModal = ({
 
             <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
               <form onSubmit={handleSubmit} className="space-y-5">
-                {fields.map((field, index) => (
+                {fields.map((field) => (
                   <motion.div
                     key={field.name}
                     initial={{ opacity: 0 }}
@@ -549,6 +804,16 @@ export const FormModal = ({
                         onChange={(v) => setFormData(prev => ({ ...prev, [field.name]: v }))}
                         options={field.options || []}
                         required={field.required}
+                      />
+                    ) : field.type === 'category-cascade' ? (
+                      <CategoryCascadeField
+                        label={field.label}
+                        value={formData[field.name] || ''}
+                        onChange={(v) => setFormData(prev => ({ ...prev, [field.name]: v }))}
+                        options={field.options || []}
+                        required={field.required}
+                        placeholder={field.placeholder}
+                        onCreateChild={field.onCreateChild}
                       />
                     ) : field.type === 'textarea' ? (
                       <TextareaField
@@ -583,7 +848,7 @@ export const FormModal = ({
                       <div className="space-y-3">
                         {field.label && <label className="block text-sm font-medium text-foreground">{field.label}</label>}
                         <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${field.gridCols || 2}, minmax(0, 1fr))` }}>
-                          {field.children?.map((child, idx) => (
+                          {field.children?.map((child) => (
                             <div key={child.name}>
                               {child.type === 'checkbox' ? (
                                 <label className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 cursor-pointer transition-colors">

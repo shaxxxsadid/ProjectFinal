@@ -23,14 +23,29 @@ const filterItems = <T extends Record<string, any>>( // eslint-disable-line
 // Вынесено в отдельную функцию, чтобы searchProducts/setCategoryFilter/setProducts
 // применяли ОБА фильтра одинаково — иначе легко рассинхронизировать пагинацию
 // (например, если поиск сбрасывает категорию или наоборот).
+//
+// В Product.categoryId хранится полный путь [root, ..., leaf].
+// Поэтому categoryIds обычно содержит один выбранный ID из каталога, а товар
+// подходит, если этот ID встречается в его пути. Массив оставлен в API store,
+// чтобы при необходимости поддерживать объединённые фильтры по нескольким веткам.
 const applyFilters = (
     items: ProductShort[],
     query: string | undefined,
-    categoryId: string | null
+    categoryIds: string[] | null
 ): ProductShort[] => {
     const q = query ?? '';
     const bySearch = q.trim() ? filterItems(items, q, ['name', 'sku'] as (keyof ProductShort)[]) : items;
-    return categoryId ? bySearch.filter((p) => String(p.categoryId) === String(categoryId)) : bySearch;
+
+    if (!categoryIds || categoryIds.length === 0) {
+        return bySearch;
+    }
+
+    const allowedIds = categoryIds.map((id) => String(id));
+
+    return bySearch.filter((p) => {
+        const productCategoryIds = Array.isArray(p.categoryId) ? p.categoryId : [p.categoryId];
+        return productCategoryIds.some((catId) => allowedIds.includes(String(catId)));
+    });
 };
 
 const ITEMS_PER_PAGE = 6;
@@ -53,7 +68,7 @@ export const useProductsStore = create<ProductStoreState>()(
             selectedProduct: null,
             isLoading: false,
             avatarVersions: {} as Record<string, number>,
-            categoryFilter: null as string | null,
+            categoryFilter: null as string[] | null,
 
             setSelectedProduct: (product) => set({ selectedProduct: product }),
 
@@ -102,11 +117,11 @@ export const useProductsStore = create<ProductStoreState>()(
                     };
                 }),
 
-            setCategoryFilter: (categoryId) =>
+            setCategoryFilter: (categoryIds) =>
                 set((state) => {
-                    const filtered = applyFilters(state.products.items, state.products.searchQuery, categoryId);
+                    const filtered = applyFilters(state.products.items, state.products.searchQuery, categoryIds);
                     return {
-                        categoryFilter: categoryId,
+                        categoryFilter: categoryIds,
                         products: {
                             ...state.products,
                             filteredItems: filtered,
@@ -139,8 +154,8 @@ export const useProductsStore = create<ProductStoreState>()(
                     const items: ProductShort[] = Array.isArray(data)
                         ? data
                         : Array.isArray(data?.data)
-                        ? data.data
-                        : [];
+                            ? data.data
+                            : [];
                     const total = typeof data?.total === 'number' ? data.total : items.length;
                     setProducts(items, total);
                 } catch (error) {
@@ -223,19 +238,38 @@ export const useProductsStore = create<ProductStoreState>()(
                     const normalizedId = String(productId);
 
                     set((state) => {
-                        const items = state.products.items.map((p) =>
-                            String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
+                        const items = state.products.items.map((product) =>
+                            String(product._id) === normalizedId
+                                ? { ...product, ...updatedProduct }
+                                : product
                         );
-                        const filteredItems = state.products.filteredItems.map((p) =>
-                            String(p._id) === normalizedId ? { ...p, ...updatedProduct } : p
+
+                        // После смены categoryId товар может войти в активный фильтр
+                        // или выйти из него, поэтому filteredItems нужно пересчитать,
+                        // а не просто заменить объект в старом массиве.
+                        const filteredItems = applyFilters(
+                            items,
+                            state.products.searchQuery,
+                            state.categoryFilter
                         );
+
                         const updatedSelected =
                             state.selectedProduct && String(state.selectedProduct._id) === normalizedId
                                 ? { ...state.selectedProduct, ...updatedProduct }
                                 : state.selectedProduct;
 
                         return {
-                            products: { ...state.products, items, filteredItems },
+                            products: {
+                                ...state.products,
+                                items,
+                                filteredItems,
+                                pagination: {
+                                    ...state.products.pagination,
+                                    page: 1,
+                                    total: filteredItems.length,
+                                    totalPages: Math.max(1, Math.ceil(filteredItems.length / state.products.pagination.limit)),
+                                },
+                            },
                             selectedProduct: updatedSelected,
                             isLoading: false,
                             avatarVersions: {
@@ -249,7 +283,6 @@ export const useProductsStore = create<ProductStoreState>()(
                 } catch (error) {
                     const message = error instanceof Error ? error.message : 'Unknown error';
                     set((state) => ({
-                        // ⚠️ Никогда не сбрасываем products при ошибке — тот же принцип, что в provider store
                         products: { ...state.products, error: message },
                         isLoading: false,
                     }));
@@ -268,24 +301,32 @@ export const useProductsStore = create<ProductStoreState>()(
                     });
 
                     const result = await res.json().catch(() => ({}));
-                    if (!res.ok || (result.success === false)) {
+                    if (!res.ok || result.success === false) {
                         throw new Error(result.error || 'Failed to delete product');
                     }
 
                     set((state) => {
-                        const items = state.products.items.filter((p) => p._id !== _id);
-                        const filteredItems = state.products.filteredItems.filter((p) => p._id !== _id);
-                        const total = items.length;
+                        const items = state.products.items.filter((product) => String(product._id) !== String(_id));
+                        const filteredItems = applyFilters(
+                            items,
+                            state.products.searchQuery,
+                            state.categoryFilter
+                        );
+
                         return {
-                            selectedProduct: state.selectedProduct?._id === _id ? null : state.selectedProduct,
+                            selectedProduct:
+                                state.selectedProduct && String(state.selectedProduct._id) === String(_id)
+                                    ? null
+                                    : state.selectedProduct,
                             products: {
                                 ...state.products,
                                 items,
                                 filteredItems,
                                 pagination: {
                                     ...state.products.pagination,
-                                    total,
-                                    totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+                                    page: 1,
+                                    total: filteredItems.length,
+                                    totalPages: Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE)),
                                 },
                             },
                             isLoading: false,

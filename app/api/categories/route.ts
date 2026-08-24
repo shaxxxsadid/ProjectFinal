@@ -13,6 +13,7 @@ function statusFromCode(code?: string): number {
         case CATEGORY_ERRORS.INVALID_PARENT:
         case CATEGORY_ERRORS.INVALID_ATTRIBUTE:
         case CATEGORY_ERRORS.VALIDATION_FAILED:
+        case 'INVALID_ID':
             return 400;
         default:
             return 500;
@@ -24,12 +25,15 @@ export async function GET(request: NextRequest) {
         await connectToDatabase();
         const { searchParams } = request.nextUrl;
 
+        const parentParam = searchParams.get('parent');
         const filter = {
             search: searchParams.get('search') || undefined,
             isActive: searchParams.has('isActive')
                 ? searchParams.get('isActive') === 'true'
                 : undefined,
-            parent: searchParams.has('parent') ? searchParams.get('parent') : undefined,
+            parent: searchParams.has('parent')
+                ? (parentParam === '' || parentParam === 'null' ? null : parentParam)
+                : undefined,
             level: searchParams.has('level') ? Number(searchParams.get('level')) : undefined,
         };
 

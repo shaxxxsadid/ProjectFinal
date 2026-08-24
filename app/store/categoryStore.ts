@@ -14,6 +14,7 @@ export const useCategoryStore = create<CategoryStoreState>()((set, get) => ({
             set({ isLoading: true, error: null });
             const res = await fetch('/api/categories');
             if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
             const result = await res.json();
             const items: CategoryShort[] = Array.isArray(result?.data) ? result.data : [];
             set({ categories: items });
@@ -27,6 +28,8 @@ export const useCategoryStore = create<CategoryStoreState>()((set, get) => ({
     createCategory: async (data) => {
         try {
             set({ isLoading: true, error: null });
+
+            // level намеренно не отправляется с клиента: его рассчитывает CategoryService.
             const res = await fetch('/api/categories', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -42,9 +45,7 @@ export const useCategoryStore = create<CategoryStoreState>()((set, get) => ({
             }
 
             await get().fetchCategories();
-            set({ isLoading: false });
-
-            return { success: true, data: result.data };
+            return { success: true, data: result.data as CategoryShort };
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error';
             set({ error: message, isLoading: false });
@@ -55,6 +56,7 @@ export const useCategoryStore = create<CategoryStoreState>()((set, get) => ({
     updateCategory: async (categoryId, data) => {
         try {
             set({ isLoading: true, error: null });
+
             const res = await fetch('/api/categories', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -69,16 +71,18 @@ export const useCategoryStore = create<CategoryStoreState>()((set, get) => ({
                 return { success: false, error: message };
             }
 
-            const updated = result.data;
+            // Изменение parent может изменить level всей дочерней ветки,
+            // поэтому локального merge одной категории недостаточно.
+            await get().fetchCategories();
+
+            const refreshedSelected = get().categories?.find(
+                (category) => String(category._id) === String(categoryId)
+            ) ?? null;
+
             set((state) => ({
-                categories: state.categories
-                    ? state.categories.map((c) =>
-                        String(c._id) === String(categoryId) ? { ...c, ...updated } : c
-                    )
-                    : state.categories,
                 selectedCategory:
                     state.selectedCategory && String(state.selectedCategory._id) === String(categoryId)
-                        ? { ...state.selectedCategory, ...updated }
+                        ? refreshedSelected
                         : state.selectedCategory,
                 isLoading: false,
             }));
@@ -109,7 +113,7 @@ export const useCategoryStore = create<CategoryStoreState>()((set, get) => ({
 
             set((state) => ({
                 categories: state.categories
-                    ? state.categories.filter((c) => String(c._id) !== String(categoryId))
+                    ? state.categories.filter((category) => String(category._id) !== String(categoryId))
                     : state.categories,
                 selectedCategory:
                     state.selectedCategory && String(state.selectedCategory._id) === String(categoryId)
