@@ -18,6 +18,8 @@ import LockWhite from "@/public/lock-white.svg";
 import LockBlack from "@/public/lock-black.svg";
 import DashboardWhite from "@/public/dashboard-white.svg";
 import DashboardBlack from "@/public/dashboard-black.svg";
+import ClipboardWhite from "@/public/clipboardList-white.svg"; 
+import ClipboardBlack from "@/public/clipboardList-black.svg"; 
 export const Images = {
     dark: {
         menu: MenuBlack,
@@ -29,7 +31,8 @@ export const Images = {
         panel: PanelWhite,
         admin: LockWhite,
         userPlaceholder: UserPlaceholderWhite,
-        dashboard: DashboardWhite
+        dashboard: DashboardWhite,
+        clipboard: ClipboardWhite
     },
     light: {
         menu: MenuWhite,
@@ -41,7 +44,8 @@ export const Images = {
         panel: PanelBlack,
         admin: LockBlack,
         userPlaceholder: UserPlaceholderBlack,
-        dashboard: DashboardBlack
+        dashboard: DashboardBlack,
+        clipboard: ClipboardBlack
     }
 } as const;
 

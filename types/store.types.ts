@@ -366,3 +366,107 @@ export interface CategoryStoreState {
     isLoading: boolean;
     error: string | null;
 }
+
+export const ORDER_STATUSES = [
+  'new',
+  'confirmed',
+  'assembling',
+  'ready_for_pickup',
+  'ready_for_shipment',
+  'handed_to_carrier',
+  'issued',
+  'cancelled',
+] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export type FulfillmentMethod = 'pickup' | 'transport_company';
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  new: 'Новый',
+  confirmed: 'Подтверждён',
+  assembling: 'Собирается',
+  ready_for_pickup: 'Готов к самовывозу',
+  ready_for_shipment: 'Готов к отправке',
+  handed_to_carrier: 'Передан транспортной компании',
+  issued: 'Выдан',
+  cancelled: 'Отменён',
+};
+
+export const FULFILLMENT_METHOD_LABELS: Record<FulfillmentMethod, string> = {
+  pickup: 'Самовывоз',
+  transport_company: 'Транспортная компания',
+};
+
+export interface OrderItemShort {
+  productId: string;
+  sku: string;
+  name: string;
+  price: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface OrderCustomer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface OrderCarrier {
+  name?: string;
+  trackingNumber?: string;
+}
+
+export interface OrderStatusHistoryItem {
+  status: OrderStatus;
+  changedAt: string;
+  changedBy: string;
+}
+
+export interface OrderShort {
+  _id: string;
+  orderNumber: string;
+  userId: string;
+  items: OrderItemShort[];
+  totalAmount: number;
+  fulfillmentMethod: FulfillmentMethod;
+  warehouseId?: string | null;
+  status: OrderStatus;
+  statusHistory: OrderStatusHistoryItem[];
+  customer: OrderCustomer;
+  comment?: string;
+  carrier?: OrderCarrier;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOrderInput {
+  items: Array<{
+    productId: string;
+    quantity: number;
+  }>;
+  fulfillmentMethod: FulfillmentMethod;
+  warehouseId?: string | null;
+  customer: OrderCustomer;
+  comment?: string;
+}
+
+export interface OrderStoreState {
+  orders: OrderShort[];
+  selectedOrder: OrderShort | null;
+  isLoading: boolean;
+  hasLoaded: boolean;
+  error: string | null;
+
+  setSelectedOrder: (order: OrderShort | null) => void;
+  fetchOrders: () => Promise<void>;
+  createOrder: (
+    data: CreateOrderInput
+  ) => Promise<{ success: boolean; data?: OrderShort; error?: string }>;
+  updateOrderStatus: (
+    orderId: string,
+    status: OrderStatus
+  ) => Promise<{ success: boolean; data?: OrderShort; error?: string }>;
+}

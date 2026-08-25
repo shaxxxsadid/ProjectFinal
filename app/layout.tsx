@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
-import Header from "@/app/components/ui/header";
+
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { cn } from "@/lib/utils";
 import { SessionProviderWrapper } from "./components/sessionProvider";
 import { Toaster } from "react-hot-toast";
+import Header from "./components/ui/header";
 
 export const metadata: Metadata = {
   title: "Create Next App",
