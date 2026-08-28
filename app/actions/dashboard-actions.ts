@@ -1,7 +1,6 @@
 'use server';
 
 import { DashboardService } from "../services/Dashboard.service";
-import { unstable_cache } from 'next/cache';
 
 export async function getDashboardData() {
   // Здесь мы вызываем сервис

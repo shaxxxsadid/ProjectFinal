@@ -13,6 +13,8 @@ import {
   StokeReservationError,
   type StockReservationAllocation,
 } from '@/app/services/Stoke.service';
+import { stockMovementService } from '@/app/services/StockMovement.service';
+import type { StockMovementType, StockMutationResult } from '@/types/stockMovement.types';
 import type {
   CreateOrderInput,
   FulfillmentMethod,
@@ -64,6 +66,38 @@ const BASE_TRANSITIONS: Partial<
 class OrderService {
   private normalizeString(value: unknown): string {
     return String(value ?? '').trim();
+  }
+
+  /**
+   * История склада пишется только после успешного order.save().
+   *
+   * Если MongoDB не смогла записать историю, сам заказ и склад уже
+   * находятся в корректном состоянии. Не возвращаем клиенту ложную
+   * ошибку статуса, а фиксируем критическую проблему в logger.
+   */
+  private async recordStockMovementsSafely(input: {
+    type: Extract<
+      StockMovementType,
+      'reservation' | 'release' | 'issue'
+    >;
+    orderId: string;
+    orderNumber: string;
+    actorId: string;
+    mutations: StockMutationResult[];
+  }): Promise<void> {
+    try {
+      await stockMovementService.recordOrderMovements(
+        input
+      );
+    } catch (error) {
+      logger.error(
+        `Critical: order ${input.orderNumber} was updated, but StockMovement was not written: ${
+          error instanceof Error
+            ? error.message
+            : error
+        }`
+      );
+    }
   }
 
   private async generateOrderNumber(): Promise<string> {
@@ -553,7 +587,7 @@ class OrderService {
         );
       }
 
-      let reservations: StockReservationAllocation[];
+      let reservations: StockMutationResult[];
 
       try {
         reservations =
@@ -601,6 +635,14 @@ class OrderService {
         });
 
         await order.save();
+
+        await this.recordStockMovementsSafely({
+          type: 'reservation',
+          orderId: String(order._id),
+          orderNumber: String(order.orderNumber),
+          actorId: changedBy,
+          mutations: reservations!,
+        });
 
         return order.toObject() as unknown as OrderShort;
       } catch (error) {
@@ -666,10 +708,13 @@ class OrderService {
         );
       }
 
+      let releaseMutations: StockMutationResult[];
+
       try {
-        await stokeService.releaseReservationAllocations(
-          stockReservations
-        );
+        releaseMutations =
+          await stokeService.releaseReservationAllocations(
+            stockReservations
+          );
       } catch (error) {
         this.translateStokeError(error);
       }
@@ -687,6 +732,14 @@ class OrderService {
         });
 
         await order.save();
+
+        await this.recordStockMovementsSafely({
+          type: 'release',
+          orderId: String(order._id),
+          orderNumber: String(order.orderNumber),
+          actorId: changedBy,
+          mutations: releaseMutations!,
+        });
 
         return order.toObject() as unknown as OrderShort;
       } catch (error) {
@@ -735,10 +788,13 @@ class OrderService {
         );
       }
 
+      let commitMutations: StockMutationResult[];
+
       try {
-        await stokeService.commitReservationAllocations(
-          stockReservations
-        );
+        commitMutations =
+          await stokeService.commitReservationAllocations(
+            stockReservations
+          );
       } catch (error) {
         this.translateStokeError(error);
       }
@@ -756,6 +812,14 @@ class OrderService {
         });
 
         await order.save();
+
+        await this.recordStockMovementsSafely({
+          type: 'issue',
+          orderId: String(order._id),
+          orderNumber: String(order.orderNumber),
+          actorId: changedBy,
+          mutations: commitMutations!,
+        });
 
         return order.toObject() as unknown as OrderShort;
       } catch (error) {

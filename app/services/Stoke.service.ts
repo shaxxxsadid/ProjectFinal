@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { logger } from "../lib/logger";
 import { Stoke } from "../models/Stoke";
+import type { StockMutationResult, StockQuantitySnapshot } from "@/types/stockMovement.types";
 
 export interface StockReservationRequestItem {
     productId: string;
@@ -159,6 +160,18 @@ class StokeService {
             warehouseId: String(allocation.warehouseId),
             batchNumber: String(allocation.batchNumber ?? ""),
             quantity: Number(allocation.quantity),
+        };
+    }
+
+    private toSnapshot(value: {
+        quantity: unknown;
+        reserved: unknown;
+        available: unknown;
+    }): StockQuantitySnapshot {
+        return {
+            quantity: Number(value.quantity) || 0,
+            reserved: Number(value.reserved) || 0,
+            available: Number(value.available) || 0,
         };
     }
 
@@ -400,13 +413,14 @@ class StokeService {
     async reserveOrderItems(
         warehouseId: string,
         items: StockReservationRequestItem[]
-    ): Promise<StockReservationAllocation[]> {
+    ): Promise<StockMutationResult[]> {
         const plan = await this.buildReservationPlan(
             warehouseId,
             items
         );
 
         const applied: StockReservationAllocation[] = [];
+        const mutations: StockMutationResult[] = [];
 
         try {
             for (const rawAllocation of plan) {
@@ -440,10 +454,25 @@ class StokeService {
                     );
                 }
 
+                const after = this.toSnapshot(updated);
+                const before: StockQuantitySnapshot = {
+                    quantity: after.quantity,
+                    reserved:
+                        after.reserved - allocation.quantity,
+                    available:
+                        after.available + allocation.quantity,
+                };
+
                 applied.push(allocation);
+
+                mutations.push({
+                    ...allocation,
+                    before,
+                    after,
+                });
             }
 
-            return plan;
+            return mutations;
         } catch (error) {
             if (applied.length > 0) {
                 await this.rollbackAppliedReservation(applied);
@@ -468,8 +497,9 @@ class StokeService {
      */
     async releaseReservationAllocations(
         allocations: StockReservationAllocation[]
-    ): Promise<void> {
+    ): Promise<StockMutationResult[]> {
         const released: StockReservationAllocation[] = [];
+        const mutations: StockMutationResult[] = [];
 
         try {
             for (const rawAllocation of allocations) {
@@ -502,8 +532,25 @@ class StokeService {
                     );
                 }
 
+                const after = this.toSnapshot(updated);
+                const before: StockQuantitySnapshot = {
+                    quantity: after.quantity,
+                    reserved:
+                        after.reserved + allocation.quantity,
+                    available:
+                        after.available - allocation.quantity,
+                };
+
                 released.push(allocation);
+
+                mutations.push({
+                    ...allocation,
+                    before,
+                    after,
+                });
             }
+
+            return mutations;
         } catch (error) {
             // Возвращаем уже освобождённые позиции обратно в резерв,
             // чтобы не получить частично отменённый заказ.
@@ -531,8 +578,9 @@ class StokeService {
      */
     async commitReservationAllocations(
         allocations: StockReservationAllocation[]
-    ): Promise<void> {
+    ): Promise<StockMutationResult[]> {
         const committed: StockReservationAllocation[] = [];
+        const mutations: StockMutationResult[] = [];
 
         try {
             for (const rawAllocation of allocations) {
@@ -566,8 +614,25 @@ class StokeService {
                     );
                 }
 
+                const after = this.toSnapshot(updated);
+                const before: StockQuantitySnapshot = {
+                    quantity:
+                        after.quantity + allocation.quantity,
+                    reserved:
+                        after.reserved + allocation.quantity,
+                    available: after.available,
+                };
+
                 committed.push(allocation);
+
+                mutations.push({
+                    ...allocation,
+                    before,
+                    after,
+                });
             }
+
+            return mutations;
         } catch (error) {
             // Возвращаем уже списанные позиции, чтобы операция была
             // максимально близка к атомарной даже без MongoDB replica set.
