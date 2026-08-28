@@ -11,13 +11,41 @@ export const useStokeStore = create<StokeStoreState>()(
             fetchStock: async () => {
                 try {
                     set({ isLoading: true, error: null });
-                    const res = await fetch('/api/stock');
+
+                    const res = await fetch('/api/stock', {
+                        cache: 'no-store',
+                    });
+
                     if (!res.ok) throw new Error('Failed to fetch stock data');
+
                     const data = await res.json();
                     const stock = Array.isArray(data) ? data : data.data ?? [];
-                    set({ stock, isLoading: false });
+
+                    // Обновляем не только общий список, но и открытую
+                    // карточку Stock Details, если она сейчас выбрана.
+                    set((state) => {
+                        const selectedStock = state.selectedStock
+                            ? stock.find(
+                                (item: StokeShort) =>
+                                    String(item._id) === String(state.selectedStock?._id)
+                              ) ?? null
+                            : null;
+
+                        return {
+                            stock,
+                            selectedStock,
+                            isLoading: false,
+                            error: null,
+                        };
+                    });
                 } catch (error) {
-                    set({ stock: null, error: error instanceof Error ? error.message : 'Unknown error', isLoading: false });
+                    // Не уничтожаем уже показанные данные при временной ошибке GET.
+                    set((state) => ({
+                        stock: state.stock,
+                        selectedStock: state.selectedStock,
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        isLoading: false,
+                    }));
                 }
             },
             createStock: async (data: Omit<StokeShort, '_id' | 'createdAt' | 'updatedAt'>) => {
@@ -119,7 +147,22 @@ export const useStokeStore = create<StokeStoreState>()(
                     }));
                 }
             },
-            setSelectedStock: (stock: StokeShort | null) => set({ selectedStock: stock }),
+            setSelectedStock: (selected: StokeShort | null) =>
+                set((state) => {
+                    if (!selected) {
+                        return { selectedStock: null };
+                    }
+
+                    const freshSelected =
+                        state.stock?.find(
+                            (item) =>
+                                String(item._id) === String(selected._id)
+                        ) ?? selected;
+
+                    return {
+                        selectedStock: freshSelected,
+                    };
+                }),
             selectedStock: null,
             isLoading: false,
             error: null,

@@ -19,7 +19,7 @@ import { useOrderStore } from "@/app/store/orderStore";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/app/hooks/debounce";
 import { AnimatePresence, motion } from "framer-motion";
-import { BusinessProfileShort, CategoryParentRef, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
+import { BusinessProfileShort, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
 import { toast } from "react-hot-toast";
 import { FaLayerGroup } from "react-icons/fa6";
 
@@ -146,12 +146,26 @@ export default function AdminDashboard() {
       searchProducts('');
     }
 
+    // Stock всегда перечитываем из API при входе во вкладку.
+    // Persisted Zustand используется только как быстрый UI-cache,
+    // но не как источник актуальных available/reserved.
+    if (tab === 'tab7') {
+      void fetchStock();
+    }
+
     // Orders загружаем лениво только при первом открытии вкладки,
     // чтобы не добавлять ещё один запрос к тяжёлому первоначальному mount Admin.
     if (tab === 'tab10' && !ordersLoaded && orders.length === 0) {
       void fetchOrders();
     }
-  }, [activeTab, searchProducts, ordersLoaded, orders.length, fetchOrders]);
+  }, [
+    activeTab,
+    searchProducts,
+    fetchStock,
+    ordersLoaded,
+    orders.length,
+    fetchOrders,
+  ]);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
@@ -345,9 +359,7 @@ export default function AdminDashboard() {
               const parent =
                 typeof data.parent === 'string'
                   ? data.parent
-                  : data.parent && '_id' in data.parent
-                  ? (data.parent as CategoryParentRef)._id
-                  : null;
+                  : data.parent?._id ?? null;
 
               const res = await createCategory({
                 code: data.code,
@@ -361,7 +373,7 @@ export default function AdminDashboard() {
               if (res.success) {
                 toast.success('Категория создана');
                 setIsCreateOpen(false);
-                setRefreshTrigger(prev => prev + 1); 
+                setRefreshTrigger(prev => prev + 1); // 🎯 Обновляем данные
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }

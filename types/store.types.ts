@@ -258,7 +258,7 @@ export interface ProductShort {
     updatedAt?: string;
 }
 
-// Пейлоад для create/update — без служебных полей
+// Payload для create/update — без служебных полей
 export type ProductInput = Omit<ProductShort, '_id' | 'createdAt' | 'updatedAt'>;
 
 export interface ProductsPagination {
@@ -367,6 +367,8 @@ export interface CategoryStoreState {
     error: string | null;
 }
 
+// types/order.types.ts
+
 export const ORDER_STATUSES = [
   'new',
   'confirmed',
@@ -380,7 +382,15 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export type FulfillmentMethod = 'pickup' | 'transport_company';
+export type FulfillmentMethod =
+  | 'pickup'
+  | 'transport_company';
+
+export type StockReservationState =
+  | 'none'
+  | 'reserved'
+  | 'released'
+  | 'committed';
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   new: 'Новый',
@@ -393,9 +403,22 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: 'Отменён',
 };
 
-export const FULFILLMENT_METHOD_LABELS: Record<FulfillmentMethod, string> = {
+export const FULFILLMENT_METHOD_LABELS: Record<
+  FulfillmentMethod,
+  string
+> = {
   pickup: 'Самовывоз',
   transport_company: 'Транспортная компания',
+};
+
+export const STOCK_RESERVATION_STATE_LABELS: Record<
+  StockReservationState,
+  string
+> = {
+  none: 'Не зарезервирован',
+  reserved: 'Зарезервирован',
+  released: 'Резерв возвращён',
+  committed: 'Списан со склада',
 };
 
 export interface OrderItemShort {
@@ -425,6 +448,14 @@ export interface OrderStatusHistoryItem {
   changedBy: string;
 }
 
+export interface OrderStockReservation {
+  stockId: string;
+  productId: string;
+  warehouseId: string;
+  batchNumber: string;
+  quantity: number;
+}
+
 export interface OrderShort {
   _id: string;
   orderNumber: string;
@@ -433,6 +464,8 @@ export interface OrderShort {
   totalAmount: number;
   fulfillmentMethod: FulfillmentMethod;
   warehouseId?: string | null;
+  stockReservations: OrderStockReservation[];
+  stockReservationState: StockReservationState;
   status: OrderStatus;
   statusHistory: OrderStatusHistoryItem[];
   customer: OrderCustomer;
@@ -448,9 +481,18 @@ export interface CreateOrderInput {
     quantity: number;
   }>;
   fulfillmentMethod: FulfillmentMethod;
+
+  // Оставлено для обратной совместимости существующего frontend-кода,
+  // но сервер НЕ доверяет warehouseId при создании заказа:
+  // склад назначает администратор при подтверждении.
   warehouseId?: string | null;
+
   customer: OrderCustomer;
   comment?: string;
+}
+
+export interface UpdateOrderStatusOptions {
+  warehouseId?: string;
 }
 
 export interface OrderStoreState {
@@ -464,9 +506,19 @@ export interface OrderStoreState {
   fetchOrders: () => Promise<void>;
   createOrder: (
     data: CreateOrderInput
-  ) => Promise<{ success: boolean; data?: OrderShort; error?: string }>;
+  ) => Promise<{
+    success: boolean;
+    data?: OrderShort;
+    error?: string;
+  }>;
   updateOrderStatus: (
     orderId: string,
-    status: OrderStatus
-  ) => Promise<{ success: boolean; data?: OrderShort; error?: string }>;
+    status: OrderStatus,
+    options?: UpdateOrderStatusOptions
+  ) => Promise<{
+    success: boolean;
+    data?: OrderShort;
+    error?: string;
+  }>;
 }
+

@@ -17,6 +17,13 @@ export const FULFILLMENT_METHOD_VALUES = [
   'transport_company',
 ] as const;
 
+export const STOCK_RESERVATION_STATE_VALUES = [
+  'none',
+  'reserved',
+  'released',
+  'committed',
+] as const;
+
 const orderItemSchema = new Schema(
   {
     productId: {
@@ -25,8 +32,6 @@ const orderItemSchema = new Schema(
       ref: 'Products',
     },
     // Снимок товара на момент оформления заказа.
-    // Даже если товар потом переименуют или изменят цену,
-    // старый заказ останется неизменным.
     sku: { type: String, required: true },
     name: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
@@ -51,6 +56,35 @@ const statusHistorySchema = new Schema(
     changedBy: {
       type: Schema.Types.ObjectId,
       required: true,
+    },
+  },
+  { _id: false }
+);
+
+const stockReservationSchema = new Schema(
+  {
+    stockId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Stoke',
+    },
+    productId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Products',
+    },
+    warehouseId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
+    batchNumber: {
+      type: String,
+      default: '',
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
     },
   },
   { _id: false }
@@ -93,7 +127,8 @@ const orderSchema = new Schema(
       type: [orderItemSchema],
       required: true,
       validate: {
-        validator: (items: unknown[]) => Array.isArray(items) && items.length > 0,
+        validator: (items: unknown[]) =>
+          Array.isArray(items) && items.length > 0,
         message: 'Order must contain at least one item',
       },
     },
@@ -110,12 +145,24 @@ const orderSchema = new Schema(
       required: true,
     },
 
-    // Пока необязателен. Когда подключим резервирование,
-    // сюда будет сохраняться склад комплектации заказа.
+    // Склад выбирает администратор при подтверждении заказа.
     warehouseId: {
       type: Schema.Types.ObjectId,
       required: false,
       default: null,
+    },
+
+    stockReservations: {
+      type: [stockReservationSchema],
+      default: [],
+    },
+
+    stockReservationState: {
+      type: String,
+      enum: STOCK_RESERVATION_STATE_VALUES,
+      default: 'none',
+      required: true,
+      index: true,
     },
 
     status: {
