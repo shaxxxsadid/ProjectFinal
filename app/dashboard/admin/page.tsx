@@ -4,7 +4,7 @@ import { MotionEffect } from "@/app/components/ui/motion-highlight";
 import { useEffect, useState, useCallback, Suspense, lazy } from "react";
 import { Tabs } from "@/app/components/ui/tabs";
 
-import { FaBasketShopping, FaShareNodes, FaUser, FaBox, FaBusinessTime, FaDolly, FaLink, FaUserLock } from "react-icons/fa6";
+import { FaBasketShopping, FaShareNodes, FaUser, FaBox, FaBusinessTime, FaDolly, FaLink, FaUserLock, FaClipboardList } from "react-icons/fa6";
 import { HorizontalWrapper } from "@/app/components/ui/horizontalWrapper";
 import { useUserStore } from "@/app/store/userStore";
 import { useRoleStore } from "@/app/store/roleStore";
@@ -15,10 +15,11 @@ import { useProductsStore } from "@/app/store/productStore";
 import { useStokeStore } from "@/app/store/stokeStore";
 import { useWarehouseStore } from "@/app/store/warehouseStore";
 import { useCategoryStore } from "@/app/store/categoryStore";
+import { useOrderStore } from "@/app/store/orderStore";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/app/hooks/debounce";
 import { AnimatePresence, motion } from "framer-motion";
-import { BusinessProfileShort, CategoryShort, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
+import { BusinessProfileShort, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
 import { toast } from "react-hot-toast";
 import { FaLayerGroup } from "react-icons/fa6";
 
@@ -41,6 +42,8 @@ const WarehouseTable = lazy(() => import("./warehouse/WarehouseTable").then(m =>
 const WarehouseDetails = lazy(() => import("./warehouse/WarehouseDetails").then(m => ({ default: m.WarehouseDetails })));
 const CategoryTable = lazy(() => import("./category/CategoryTable").then(m => ({ default: m.CategoryTable })));
 const CategoryDetails = lazy(() => import("./category/CategoryDetails").then(m => ({ default: m.CategoryDetails })));
+const OrderTable = lazy(() => import("./orders/OrderTable").then(m => ({ default: m.OrderTable })));
+const OrderDetails = lazy(() => import("./orders/OrderDetails").then(m => ({ default: m.OrderDetails })));
 
 const UserCrudModal = lazy(() => import("@/app/components/ui/UserCrudModal").then(m => ({ default: m.UserCrudModal })));
 const BusinessProfileCrudModal = lazy(() => import("@/app/components/ui/admin/modal/BusinessCrudModal").then(m => ({ default: m.BusinessProfileCrudModal })));
@@ -65,6 +68,7 @@ const TAB_TITLES: Record<string, string> = {
   tab7: 'Stock Statistics',
   tab8: 'Warehouse Statistics',
   tab9: 'Category Statistics',
+  tab10: 'Order Management',
 };
 
 const TAB_SEARCH_PLACEHOLDER: Record<string, string> = {
@@ -77,6 +81,7 @@ const TAB_SEARCH_PLACEHOLDER: Record<string, string> = {
   tab7: 'Search stock...',
   tab8: 'Search warehouses...',
   tab9: 'Search categories...',
+  tab10: 'Search orders...',
 };
 
 // Табы с кнопкой добавления (tab2 - accounts не имеет create)
@@ -92,6 +97,7 @@ export default function AdminDashboard() {
   const { stock, fetchStock, createStock } = useStokeStore();
   const { warehouses, fetchWarehouses, createWarehouse } = useWarehouseStore();
   const { categories, fetchCategories, createCategory } = useCategoryStore();
+  const { orders, hasLoaded: ordersLoaded, fetchOrders } = useOrderStore();
   const [activeTab, setActiveTab] = useState('tab1');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -127,14 +133,39 @@ export default function AdminDashboard() {
       case 'tab7': fetchStock(); break;
       case 'tab8': fetchWarehouses(); break;
       case 'tab9': fetchCategories(); break;
+      case 'tab10': fetchOrders(); break;
     }
-  }, [refreshTrigger, activeTab, fetchUser, fetchAccount, fetchBusinessProfiles, fetchProviders, fetchRoles, fetchProducts, fetchStock, fetchWarehouses, fetchCategories]);
+  }, [refreshTrigger, activeTab, fetchUser, fetchAccount, fetchBusinessProfiles, fetchProviders, fetchRoles, fetchProducts, fetchStock, fetchWarehouses, fetchCategories, fetchOrders]);
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     setSearchQuery('');
-    if (activeTab === 'tab6') searchProducts('');
-  }, [activeTab, searchProducts]);
+
+    // При выходе из Products очищаем только текстовый admin-поиск.
+    if (activeTab === 'tab6') {
+      searchProducts('');
+    }
+
+    // Stock всегда перечитываем из API при входе во вкладку.
+    // Persisted Zustand используется только как быстрый UI-cache,
+    // но не как источник актуальных available/reserved.
+    if (tab === 'tab7') {
+      void fetchStock();
+    }
+
+    // Orders загружаем лениво только при первом открытии вкладки,
+    // чтобы не добавлять ещё один запрос к тяжёлому первоначальному mount Admin.
+    if (tab === 'tab10' && !ordersLoaded && orders.length === 0) {
+      void fetchOrders();
+    }
+  }, [
+    activeTab,
+    searchProducts,
+    fetchStock,
+    ordersLoaded,
+    orders.length,
+    fetchOrders,
+  ]);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
@@ -153,6 +184,7 @@ export default function AdminDashboard() {
       case 'tab7': return <Suspense fallback={<LoadingFallback />}><StockTable searchQuery={debounceSearchQuery} /></Suspense>;
       case 'tab8': return <Suspense fallback={<LoadingFallback />}><WarehouseTable searchQuery={debounceSearchQuery} /></Suspense>;
       case 'tab9': return <Suspense fallback={<LoadingFallback />}><CategoryTable /></Suspense>;
+      case 'tab10': return <Suspense fallback={<LoadingFallback />}><OrderTable searchQuery={debounceSearchQuery} /></Suspense>;
       default: return <p className="text-muted-foreground text-center py-8">Coming soon</p>;
     }
   };
@@ -168,6 +200,7 @@ export default function AdminDashboard() {
       case 'tab7': return <Suspense fallback={null}><StockDetails /></Suspense>;
       case 'tab8': return <Suspense fallback={null}><WarehouseDetails /></Suspense>;
       case 'tab9': return <Suspense fallback={null}><CategoryDetails /></Suspense>;
+      case 'tab10': return <Suspense fallback={null}><OrderDetails /></Suspense>;
       default: return null;
     }
   };
@@ -323,7 +356,20 @@ export default function AdminDashboard() {
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
             onSubmit={async (data) => {
-              const res = await createCategory(data as Omit<CategoryShort, '_id' | 'createdAt' | 'updatedAt'>);
+              const parent =
+                typeof data.parent === 'string'
+                  ? data.parent
+                  : data.parent?._id ?? null;
+
+              const res = await createCategory({
+                code: data.code,
+                name: data.name,
+                description: data.description,
+                parent,
+                attributes: data.attributes ?? [],
+                isActive: data.isActive,
+              });
+
               if (res.success) {
                 toast.success('Категория создана');
                 setIsCreateOpen(false);
@@ -331,6 +377,7 @@ export default function AdminDashboard() {
               } else {
                 toast.error(res.error || 'Ошибка создания');
               }
+
               return res;
             }}
             mode="create"
@@ -363,6 +410,7 @@ export default function AdminDashboard() {
                   { id: 'tab7', label: 'Stock', icon: <FaBox /> },
                   { id: 'tab8', label: 'Warehouses', icon: <FaDolly /> },
                   { id: 'tab9', label: 'Categories', icon: <FaLayerGroup /> },
+                  { id: 'tab10', label: 'Orders', icon: <FaClipboardList /> },
                 ]}
                 textSize="lg"
                 activeTab={activeTab}
@@ -375,7 +423,7 @@ export default function AdminDashboard() {
         {/* 2. ЦЕНТРАЛЬНАЯ КОЛОНКА */}
         <div className={cn(
           "bg-background border border-foreground/20 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl min-w-0",
-          activeTab === 'tab6' || activeTab === 'tab7' || activeTab === 'tab9' ? "h-[83%]" : "h-[70%]",
+          activeTab === 'tab6' || activeTab === 'tab7' || activeTab === 'tab9' || activeTab === 'tab10' ? "h-[83%]" : "h-[70%]",
         )}>
           {/* Заголовок + кнопка добавления */}
           <div className="relative flex items-center justify-center mb-4">

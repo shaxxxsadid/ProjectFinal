@@ -8,9 +8,15 @@ import { Pagination } from '@/app/components/ui/pagination';
 import { useDebounce } from '@/app/hooks/debounce';
 import { useProductsStore } from '@/app/store/productStore';
 import { useCategoryStore } from '@/app/store/categoryStore';
-import { CategoryParentRef, ProductShort } from '@/types/store.types';
+import { CategoryParentRef, CategoryShort, ProductShort } from '@/types/store.types';
+import { FaCartPlus, FaCartShopping } from 'react-icons/fa6';
+import { toast } from 'react-hot-toast';
+import { useCartStore } from '@/app/store/cartStore';
+
 import ProductAvatar from '@/app/components/ui/ProductAvatar';
 import { ProductDetailModal } from '@/app/components/ui/product/modal/ProductDetailModal';
+import { CartDrawer } from '@/app/components/ui/Cart/CartDrawer';
+import { CheckoutModal } from '@/app/components/ui/Cart/CheckoutModal';
 
 export default function ProductsCatalogPage() {
   const {
@@ -19,8 +25,6 @@ export default function ProductsCatalogPage() {
     searchProducts,
     setProductPage,
     fetchProducts,
-    selectedProduct,
-    setSelectedProduct,
     avatarVersions,
     categoryFilter, // Теперь это string[] | null
     setCategoryFilter,
@@ -28,7 +32,12 @@ export default function ProductsCatalogPage() {
 
   const { categories, fetchCategories } = useCategoryStore();
 
+  const { items: cartItems, addProduct } = useCartStore();
+
   const [searchInput, setSearchInput] = useState('');
+  const [catalogSelectedProduct, setCatalogSelectedProduct] = useState<ProductShort | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const debouncedSearchInput = useDebounce(searchInput, 500);
 
   useEffect(() => {
@@ -152,8 +161,24 @@ export default function ProductsCatalogPage() {
   );
 
   const handleProductClick = useCallback((product: ProductShort) => {
-    setSelectedProduct(product);
-  }, [setSelectedProduct]);
+    setCatalogSelectedProduct(product);
+  }, []);
+
+  const cartQuantity = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems]
+  );
+
+  const handleAddToCart = useCallback((product: ProductShort) => {
+    const result = addProduct(product);
+
+    if (!result.success) {
+      toast.error(result.error || 'Не удалось добавить товар');
+      return;
+    }
+
+    toast.success('Товар добавлен в корзину');
+  }, [addProduct]);
 
   if (isLoading) return <Loader text="Загружаем каталог..." />;
 
@@ -200,6 +225,24 @@ export default function ProductsCatalogPage() {
               <h1 className="text-4xl font-semibold tracking-tight">Товары</h1>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className={cn(
+                  'relative inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium',
+                  'cursor-pointer border-foreground/15 bg-foreground/5 text-foreground',
+                  'hover:bg-foreground/10 transition-colors'
+                )}
+              >
+                <FaCartShopping />
+                <span className="hidden sm:inline">Корзина</span>
+                {cartQuantity > 0 && (
+                  <span className="min-w-5 h-5 px-1 rounded-full bg-teal-500 text-white text-[11px] font-bold flex items-center justify-center">
+                    {cartQuantity > 99 ? '99+' : cartQuantity}
+                  </span>
+                )}
+              </button>
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className={cn(
                   'px-1.5 py-0.5 rounded text-sm border backdrop-blur-sm bg-background/5 border-background/10'
@@ -532,6 +575,27 @@ export default function ProductsCatalogPage() {
                             </div>
                           )}
 
+                          {/* Корзина */}
+                          <div className="mt-auto pt-2">
+                            <button
+                              type="button"
+                              disabled={!Number.isFinite(Number(product.price))}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleAddToCart(product);
+                              }}
+                              className={cn(
+                                'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+                                Number.isFinite(Number(product.price))
+                                  ? 'cursor-pointer border-teal-500/20 bg-teal-500/10 text-teal-600 hover:bg-teal-500/20 dark:text-teal-400'
+                                  : 'cursor-not-allowed border-foreground/10 bg-foreground/5 text-muted-foreground/50'
+                              )}
+                            >
+                              <FaCartPlus />
+                              В корзину
+                            </button>
+                          </div>
+
                           {/* Hover hint */}
                           <div className={cn(
                             'absolute bottom-4 right-4 flex items-center gap-1.5 text-xs text-muted-foreground/50',
@@ -569,11 +633,33 @@ export default function ProductsCatalogPage() {
         )}
       </div>
 
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onCheckout={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        onBackToCart={() => {
+          setIsCheckoutOpen(false);
+          setIsCartOpen(true);
+        }}
+      />
+
       {/* Product Detail Modal */}
       <ProductDetailModal
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-        avatarVersion={selectedProduct ? (avatarVersions[String(selectedProduct._id)] ?? 0) : 0}
+        product={catalogSelectedProduct}
+        onClose={() => setCatalogSelectedProduct(null)}
+        avatarVersion={
+          catalogSelectedProduct
+            ? (avatarVersions[String(catalogSelectedProduct._id)] ?? 0)
+            : 0
+        }
       />
     </div>
   );

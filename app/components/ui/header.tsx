@@ -20,7 +20,7 @@ const NAV_ITEM_BASE = [
     "relative flex justify-start items-center w-full gap-6",
     "cursor-pointer overflow-hidden",
     "border-l-[3px] border-l-transparent",
-    "py-6 rounded-r-lg",   // было px-2 py-2
+    "py-6 rounded-r-lg",
     "transition-all duration-150 ease-in-out",
     "group",
 ].join(" ");
@@ -122,7 +122,7 @@ export default function Header() {
             onMouseLeave={() => setExpand(false)}
         >
             {/* логотип */}
-            <div className="flex justify-start gap-6 ml-1 items-center w-64">
+            <div className="flex justify-start gap-6 ml-1 items-center w-64 shrink-0">
                 <ThemedIcon
                     darkIcon={Images.light.menu.src}
                     lightIcon={Images.dark.menu.src}
@@ -143,7 +143,7 @@ export default function Header() {
             </div>
 
             {/* навигация */}
-            <nav className="flex flex-col justify-center items-center defaultTransitionEaseInOut h-full w-54">
+            <nav className="flex flex-1 min-h-0 flex-col justify-center items-center defaultTransitionEaseInOut w-54 overflow-y-auto overflow-x-hidden">
                 <ul className={`dark:text-white text-black flex flex-col items-start justify-center gap-8 h-1/2`}>
                     {/* Главная */}
                     <NavItem onClick={() => router.push("/")}>
@@ -170,6 +170,19 @@ export default function Header() {
                         />
                         <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
                             Каталог
+                        </TXT>
+                    </NavItem>
+                    {/* Мои заказы */}
+                    <NavItem onClick={() => router.push("/pages/orders")}>
+                        <Button
+                            {...iconBtn({
+                                darkIcon: Images.dark.clipboard.src,
+                                lightIcon: Images.light.clipboard.src,
+                            })}
+                            onClick={() => router.push("/orders")}
+                        />
+                        <TXT {...labelTxt} animate={expand ? "animate" : { opacity: 0, x: -10 }}>
+                            Мои заказы
                         </TXT>
                     </NavItem>
                     {(session?.user.role === "admin" || session?.user.role === "manager") && (
@@ -266,7 +279,7 @@ export default function Header() {
             </nav>
 
             {/* footer хедера */}
-            <div className="w-54 flex justify-between items-center">
+            <div className="w-54 flex justify-between items-center shrink-0">
                 <div className="flex justify-end defaultTransitionEaseInOut">
                     <Button
                         img={{
