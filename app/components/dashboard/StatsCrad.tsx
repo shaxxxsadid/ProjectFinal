@@ -1,35 +1,86 @@
-"use client";
-import { motion } from "framer-motion";
-import { Building2, Package, Users, Warehouse } from "lucide-react";
+import {
+  FaBoxArchive,
+  FaBoxesStacked,
+  FaUsers,
+  FaWarehouse,
+} from "react-icons/fa6";
 
-type Stats = { totalWarehouses: number; totalProducts: number; activeUsers: number; totalStock: number; };
+interface DashboardStats {
+  totalWarehouses: number;
+  totalProducts: number;
+  activeUsers: number;
+  totalStock: number;
+}
 
-const CARDS = [
-  { title: "Активные Склады", key: "totalWarehouses", icon: Building2, color: "bg-blue-500" },
-  { title: "Товары", key: "totalProducts", icon: Package, color: "bg-emerald-500" },
-  { title: "Пользователи", key: "activeUsers", icon: Users, color: "bg-violet-500" },
-  { title: "Всего мест", key: "totalStock", icon: Warehouse, color: "bg-amber-500" }, // ✅ Более точная подпись
-] as const;
+interface StatsCardsProps {
+  stats: DashboardStats;
+}
 
-export default function StatsCards({ stats }: { stats: Stats }) {
+const formatNumber = (value: number) =>
+  new Intl.NumberFormat("ru-RU").format(value);
+
+export default function StatsCards({
+  stats,
+}: StatsCardsProps) {
+  const cards = [
+    {
+      label: "Активные склады",
+      value: stats.totalWarehouses,
+      caption: "Работают в системе",
+      icon: FaWarehouse,
+    },
+    {
+      label: "Товарные позиции",
+      value: stats.totalProducts,
+      caption: "В каталоге продукции",
+      icon: FaBoxesStacked,
+    },
+    {
+      label: "Активные пользователи",
+      value: stats.activeUsers,
+      caption: "Имеют доступ к системе",
+      icon: FaUsers,
+    },
+    {
+      label: "Общий остаток",
+      value: stats.totalStock,
+      caption: "Единиц на всех складах",
+      icon: FaBoxArchive,
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {CARDS.map((card, i) => {
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => {
         const Icon = card.icon;
+
         return (
-          <motion.div
-            key={card.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="rounded-xl p-5 shadow-sm border bg-card border-border text-card-foreground hover:shadow-md transition-shadow"
+          <article
+            key={card.label}
+            className="group relative overflow-hidden rounded-2xl border border-border bg-card/65 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/60"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-muted-foreground">{card.title}</span>
-              <div className={`p-2 rounded-lg ${card.color} text-white`}><Icon size={18} /></div>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {card.label}
+                </div>
+
+                <div className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+                  {formatNumber(card.value)}
+                </div>
+
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {card.caption}
+                </div>
+              </div>
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-box/20 bg-box/10 text-box">
+                <Icon className="text-lg" />
+              </div>
             </div>
-            <p className="text-2xl font-bold">{(stats[card.key] ?? 0).toLocaleString("ru-RU")}</p>
-          </motion.div>
+
+            <div className="absolute inset-x-4 bottom-0 h-px origin-left scale-x-0 bg-box/50 transition-transform duration-300 group-hover:scale-x-100" />
+          </article>
         );
       })}
     </div>

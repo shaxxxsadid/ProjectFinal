@@ -7,131 +7,285 @@ import * as am5xy from '@amcharts/amcharts5/xy';
 import * as am5percent from '@amcharts/amcharts5/percent';
 import am5themes_Animated from '@amcharts/amcharts5/themes/Animated';
 
-// ── Утилита для чтения CSS-переменных ──────────────────────────────────────
-const getCSSVar = (name: string): string => {
-  if (typeof window === 'undefined') return '#ffffff';
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const getCSSVar = (
+  name: string,
+  fallback: string
+): string => {
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
 
-  if (value === 'black') return '#000000';
-  if (value === 'white') return '#ffffff';
-
-  return value || '#ffffff';
+  return (
+    getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim() || fallback
+  );
 };
 
-// ─── Интерфейс 1: Столбчатая диаграмма ──────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Остатки по складам
+// ─────────────────────────────────────────────────────────────
 interface WarehouseChartProps {
-  data: Array<{ warehouse: string; quantity: number; reserved: number }>;
+  data: Array<{
+    warehouse: string;
+    quantity: number;
+    available: number;
+    reserved: number;
+  }>;
 }
 
-export function WarehouseStockChart({ data }: WarehouseChartProps) {
+export function WarehouseStockChart({
+  data,
+}: WarehouseChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    if (!chartRef.current || !data?.length) return;
+    if (!chartRef.current || !data?.length) {
+      return;
+    }
 
     const root = am5.Root.new(chartRef.current);
     root.setThemes([am5themes_Animated.new(root)]);
 
+    const foreground = getCSSVar(
+      '--foreground',
+      resolvedTheme === 'dark'
+        ? '#ffffff'
+        : '#000000'
+    );
+
+    const background = getCSSVar(
+      '--background',
+      resolvedTheme === 'dark'
+        ? '#000000'
+        : '#ffffff'
+    );
+
+    const accent = getCSSVar(
+      '--box',
+      resolvedTheme === 'dark'
+        ? '#00b7b7'
+        : '#8b4513'
+    );
+
+    const textColor = am5.color(foreground);
+
     const chart = root.container.children.push(
       am5xy.XYChart.new(root, {
-        panX: true,
-        wheelX: 'panX',
-        wheelY: 'zoomX',
-        paddingBottom: 60,
-        paddingRight: 20,
+        panX: false,
+        panY: false,
+        wheelX: 'none',
+        wheelY: 'none',
+        paddingTop: 8,
+        paddingBottom: 0,
         paddingLeft: 0,
-        paddingTop: 20,
+        paddingRight: 6,
       })
     );
 
-    const cursor = chart.set('cursor', am5xy.XYCursor.new(root, {}));
-    cursor.lineY.set('visible', false);
+    const xRenderer = am5xy.AxisRendererX.new(
+      root,
+      {
+        minGridDistance: 55,
+        cellStartLocation: 0.12,
+        cellEndLocation: 0.88,
+      }
+    );
+
+    xRenderer.labels.template.setAll({
+      fill: textColor,
+      fillOpacity: 0.72,
+      fontSize: 10,
+      maxWidth: 135,
+      oversizedBehavior: 'truncate',
+      centerX: am5.p50,
+      textAlign: 'center',
+      paddingTop: 8,
+    });
+
+    xRenderer.grid.template.setAll({
+      strokeOpacity: 0,
+    });
 
     const xAxis = chart.xAxes.push(
       am5xy.CategoryAxis.new(root, {
         categoryField: 'warehouse',
-        renderer: am5xy.AxisRendererX.new(root, {
-          minGridDistance: 50,
-          cellStartLocation: 0.1,
-          cellEndLocation: 0.9,
-        }),
+        renderer: xRenderer,
       })
     );
 
-    xAxis.get('renderer').labels.template.setAll({
-      rotation: -45,
-      centerY: am5.p50,
-      centerX: am5.p100,
-      fontSize: 11,
-      paddingTop: 10,
+    const yRenderer =
+      am5xy.AxisRendererY.new(root, {});
+
+    yRenderer.labels.template.setAll({
+      fill: textColor,
+      fillOpacity: 0.45,
+      fontSize: 10,
+      paddingRight: 6,
+    });
+
+    yRenderer.grid.template.setAll({
+      stroke: textColor,
+      strokeOpacity: 0.09,
     });
 
     const yAxis = chart.yAxes.push(
       am5xy.ValueAxis.new(root, {
-        renderer: am5xy.AxisRendererY.new(root, {}),
+        min: 0,
+        extraMax: 0.08,
+        renderer: yRenderer,
       })
     );
 
-    const series = chart.series.push(
-      am5xy.ColumnSeries.new(root, {
-        xAxis,
-        yAxis,
-        valueYField: 'quantity',
-        categoryXField: 'warehouse',
-        tooltip: am5.Tooltip.new(root, {
-          labelText: '{categoryX}: {valueY}',
-          background: am5.Rectangle.new(root, {
-            fill: am5.color(theme === 'dark' ? '#1f2937' : '#ffffff'),
-            stroke: am5.color(theme === 'dark' ? '#374151' : '#e5e7eb'),
-            strokeWidth: 1,
+    const createSeries = (
+      name: string,
+      field: 'available' | 'reserved',
+      color: string,
+      opacity: number
+    ) => {
+      const series = chart.series.push(
+        am5xy.ColumnSeries.new(root, {
+          name,
+          xAxis,
+          yAxis,
+          valueYField: field,
+          categoryXField: 'warehouse',
+          clustered: true,
+          tooltip: am5.Tooltip.new(root, {
+            labelText:
+              '[bold]{categoryX}[/]\n{name}: {valueY.formatNumber("#,###")}',
+            background:
+              am5.RoundedRectangle.new(root, {
+                fill: am5.color(background),
+                fillOpacity: 0.97,
+                stroke: am5.color(color),
+                strokeOpacity: 0.35,
+                cornerRadiusTL: 8,
+                cornerRadiusTR: 8,
+                cornerRadiusBL: 8,
+                cornerRadiusBR: 8,
+              }),
           }),
-        }),
-      })
+        })
+      );
+
+      series.columns.template.setAll({
+        fill: am5.color(color),
+        fillOpacity: opacity,
+        strokeOpacity: 0,
+        width: am5.percent(72),
+        cornerRadiusTL: 6,
+        cornerRadiusTR: 6,
+      });
+
+      series.data.setAll(data);
+      series.appear(650);
+
+      return series;
+    };
+
+    createSeries(
+      'Свободно',
+      'available',
+      accent,
+      1
     );
 
-    // 🔺 ИЗМЕНЕНИЕ 1: увеличена высота колонок (80% → 95%)
-    series.columns.template.setAll({
-      fill: am5.color(theme === 'dark' ? '#00b7b7' : '#8b4513'),
-      strokeOpacity: 0,
-      cornerRadiusTR: 6,
-      cornerRadiusTL: 6,
-      height: am5.percent(95), // ← было 80%
-      width: am5.percent(80),
-    });
+    createSeries(
+      'Зарезервировано',
+      'reserved',
+      foreground,
+      0.28
+    );
 
     xAxis.data.setAll(data);
-    series.data.setAll(data);
 
-    series.appear(1000);
-    chart.appear(1000, 100);
+    const cursor = chart.set(
+      'cursor',
+      am5xy.XYCursor.new(root, {
+        behavior: 'none',
+      })
+    );
+
+    cursor.lineX.setAll({
+      stroke: textColor,
+      strokeOpacity: 0.16,
+    });
+
+    cursor.lineY.set('visible', false);
+
+    chart.appear(650, 60);
 
     return () => root.dispose();
-  }, [data, theme]);
+  }, [data, resolvedTheme]);
 
-  return <div ref={chartRef} className="w-full h-87.5" />;
+  if (!data?.length) {
+    return (
+      <div className="flex h-60 items-center justify-center text-sm text-muted-foreground">
+        Нет данных по складам
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={chartRef}
+      className="h-60 w-full"
+    />
+  );
 }
 
+// ─────────────────────────────────────────────────────────────
+// Распределение запасов
+// ВАЖНО: никаких внешних amCharts labels/ticks/tooltips.
+// Легенда выводится wrapper-компонентом на React.
+// ─────────────────────────────────────────────────────────────
 interface DistributionChartProps {
-  data: Array<{ status: string; value: number }>;
+  data: Array<{
+    status: string;
+    value: number;
+  }>;
 }
 
-export function StockDistributionChart({ data }: DistributionChartProps) {
+export function StockDistributionChart({
+  data,
+}: DistributionChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    if (!chartRef.current || !data?.length) return;
+    if (!chartRef.current || !data?.length) {
+      return;
+    }
 
     const root = am5.Root.new(chartRef.current);
     root.setThemes([am5themes_Animated.new(root)]);
 
-    const chart = root.container.children.push(
-      am5percent.PieChart.new(root, {
-        layout: root.verticalLayout,
-        innerRadius: am5.percent(45),
-      })
+    const foreground = getCSSVar(
+      '--foreground',
+      resolvedTheme === 'dark'
+        ? '#ffffff'
+        : '#000000'
     );
+
+    const accent = getCSSVar(
+      '--box',
+      resolvedTheme === 'dark'
+        ? '#00b7b7'
+        : '#8b4513'
+    );
+
+    const chart =
+      root.container.children.push(
+        am5percent.PieChart.new(root, {
+          innerRadius: am5.percent(68),
+          paddingTop: 0,
+          paddingRight: 0,
+          paddingBottom: 0,
+          paddingLeft: 0,
+        })
+      );
 
     const series = chart.series.push(
       am5percent.PieSeries.new(root, {
@@ -141,25 +295,65 @@ export function StockDistributionChart({ data }: DistributionChartProps) {
       })
     );
 
-    const isDark = theme === 'dark';
-    const color1 = am5.color(isDark ? '#00b7b7' : '#8b4513');
-    const color2 = am5.color(isDark ? '#4a4a4a' : '#d4c4b7');
+    series.set(
+      'colors',
+      am5.ColorSet.new(root, {
+        colors: [
+          am5.color(accent),
+          am5.color(foreground),
+        ],
+        reuse: true,
+      })
+    );
 
-    series.set("colors", am5.ColorSet.new(root, {
-      colors: [color1, color2]
-    }));
-
-    // 🔺 ИЗМЕНЕНИЕ 2: убрана обводка у сегментов donut-диаграммы
+    // Никаких всплывающих tooltip за границами блока.
     series.slices.template.setAll({
-      strokeWidth: 2,
-      stroke: am5.color(getCSSVar('--background')),
-      strokeOpacity: 0, // ← добавлено: скрывает обводку
+      strokeOpacity: 0,
+      cornerRadius: 5,
+      tooltipText: '',
+      interactive: false,
+    });
+
+    // Жёстко убираем стандартные внешние подписи amCharts.
+    // text: '' дополнительно защищает от их появления после resize/animation.
+    series.labels.template.setAll({
+      text: '',
+      visible: false,
+      forceHidden: true,
+      opacity: 0,
+    });
+
+    series.labels.template.adapters.add(
+      'text',
+      () => ''
+    );
+
+    series.ticks.template.setAll({
+      visible: false,
+      forceHidden: true,
+      opacity: 0,
+      strokeOpacity: 0,
     });
 
     series.data.setAll(data);
 
-    return () => root.dispose();
-  }, [data, theme]);
+    series.appear(650, 60);
 
-  return <div ref={chartRef} className="w-full h-75" />;
+    return () => root.dispose();
+  }, [data, resolvedTheme]);
+
+  if (!data?.length) {
+    return (
+      <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">
+        Нет данных о запасах
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={chartRef}
+      className="h-44 w-full"
+    />
+  );
 }
