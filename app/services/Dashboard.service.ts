@@ -3,6 +3,7 @@ import { Products } from "../models/Products";
 import { Stoke } from "../models/Stoke";
 import { Users } from "../models/Users";
 import { Warehouse } from "../models/Warehouse";
+import { StockMovements } from "../models/StockMovement";
 
 export class DashboardService {
   static async getStats() {
@@ -166,4 +167,210 @@ export class DashboardService {
       { status: 'Занято', value: reserved }
     ];
   }
+  /**
+   * Аналитика по StockMovement за последние periodDays дней.
+   *
+   * Важно:
+   * operations — количество записей движения по партиям,
+   * units — количество единиц, затронутых этими записями.
+   */
+  static async getStockMovementStats(
+    periodDays = 30
+  ) {
+    await connectToDatabase();
+
+    const safePeriodDays = Math.min(
+      Math.max(
+        Number.isFinite(periodDays)
+          ? Math.floor(periodDays)
+          : 30,
+        1
+      ),
+      365
+    );
+
+    const periodStart = new Date();
+    periodStart.setDate(
+      periodStart.getDate() - safePeriodDays
+    );
+
+    const grouped = await StockMovements.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: periodStart,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$type',
+
+          operations: {
+            $sum: 1,
+          },
+
+          units: {
+            $sum: {
+              $ifNull: ['$quantity', 0],
+            },
+          },
+
+          netStockChange: {
+            $sum: {
+              $subtract: [
+                {
+                  $ifNull: [
+                    '$after.quantity',
+                    0,
+                  ],
+                },
+                {
+                  $ifNull: [
+                    '$before.quantity',
+                    0,
+                  ],
+                },
+              ],
+            },
+          },
+
+          netReservedChange: {
+            $sum: {
+              $subtract: [
+                {
+                  $ifNull: [
+                    '$after.reserved',
+                    0,
+                  ],
+                },
+                {
+                  $ifNull: [
+                    '$before.reserved',
+                    0,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const lastMovement =
+      await StockMovements.findOne(
+        {},
+        {
+          createdAt: 1,
+        }
+      )
+        .sort({
+          createdAt: -1,
+        })
+        .lean();
+
+    const types = [
+      'reservation',
+      'release',
+      'issue',
+      'receipt',
+      'adjustment',
+    ] as const;
+
+    const emptyItem = () => ({
+      operations: 0,
+      units: 0,
+      netStockChange: 0,
+      netReservedChange: 0,
+    });
+
+    const byType = {
+      reservation: emptyItem(),
+      release: emptyItem(),
+      issue: emptyItem(),
+      receipt: emptyItem(),
+      adjustment: emptyItem(),
+    };
+
+    for (const item of grouped) {
+      if (
+        !types.includes(
+          item._id
+        )
+      ) {
+        continue;
+      }
+
+      byType[
+        item._id as keyof typeof byType
+      ] = {
+        operations: Math.max(
+          0,
+          Number(item.operations) || 0
+        ),
+        units: Math.max(
+          0,
+          Number(item.units) || 0
+        ),
+        netStockChange:
+          Number(
+            item.netStockChange
+          ) || 0,
+        netReservedChange:
+          Number(
+            item.netReservedChange
+          ) || 0,
+      };
+    }
+
+    const totalOperations =
+      Object.values(byType).reduce(
+        (sum, item) =>
+          sum + item.operations,
+        0
+      );
+
+    const totalUnits =
+      Object.values(byType).reduce(
+        (sum, item) =>
+          sum + item.units,
+        0
+      );
+
+    const netStockChange =
+      Object.values(byType).reduce(
+        (sum, item) =>
+          sum + item.netStockChange,
+        0
+      );
+
+    const netReservedChange =
+      Object.values(byType).reduce(
+        (sum, item) =>
+          sum +
+          item.netReservedChange,
+        0
+      );
+
+    return {
+      periodDays: safePeriodDays,
+      periodStart:
+        periodStart.toISOString(),
+
+      totalOperations,
+      totalUnits,
+      netStockChange,
+      netReservedChange,
+
+      lastMovementAt:
+        lastMovement?.createdAt
+          ? new Date(
+              lastMovement.createdAt
+            ).toISOString()
+          : null,
+
+      byType,
+    };
+  }
+
 }

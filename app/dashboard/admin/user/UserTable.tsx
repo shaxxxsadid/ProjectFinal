@@ -89,3 +89,5 @@ export const UserTable = React.memo(({ searchQuery = '' }: { searchQuery?: strin
     </div>
   );
 });
+
+UserTable.displayName = 'UserTable';

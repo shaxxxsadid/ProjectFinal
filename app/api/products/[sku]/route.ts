@@ -10,11 +10,13 @@ const statusFromProductCode = (code?: string) => code === 'NOT_FOUND' ? 404 : 40
 // GET /api/products/[sku] - Получить товар по SKU
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { sku: string } }
+  { params }: { params: Promise<{ sku: string }> }
 ) {
   try {
+    const { sku } = await params;
+
     await connectToDatabase();
-    const result = await productService.getProductBySku(params.sku);
+    const result = await productService.getProductBySku(sku);
 
     return NextResponse.json(
       result.success
@@ -34,9 +36,11 @@ export async function GET(
 // PUT /api/products/[sku] - Полное обновление товара по SKU
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { sku: string } }
+  { params }: { params: Promise<{ sku: string }> }
 ) {
   try {
+    const { sku } = await params;
+
     const session = await getServerSession(AuthOptions);
     if (!session) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -44,7 +48,7 @@ export async function PUT(
 
     await connectToDatabase();
     const body = await request.json();
-    const result = await productService.updateProductBySku(params.sku, body);
+    const result = await productService.updateProductBySku(sku, body);
 
     return NextResponse.json(
       result.success
@@ -64,9 +68,11 @@ export async function PUT(
 // PATCH /api/products/[sku] - Частичное обновление по SKU
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { sku: string } }
+  { params }: { params: Promise<{ sku: string }> }
 ) {
   try {
+    const { sku } = await params;
+
     const session = await getServerSession(AuthOptions);
     if (!session) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -74,7 +80,7 @@ export async function PATCH(
 
     await connectToDatabase();
     const body = await request.json();
-    const result = await productService.updateProductBySku(params.sku, body);
+    const result = await productService.updateProductBySku(sku, body);
 
     return NextResponse.json(
       result.success

@@ -175,10 +175,9 @@ export const CategoryDetails = () => {
                     }
 
                     try {
-                        // ✅ Теперь типы полностью совместимы — никакого 'unknown' не нужно!
                         const res = await updateCategory(
                             activeCategory._id,
-                            data as Omit<CategoryShort, '_id' | 'createdAt' | 'updatedAt'>
+                            data
                         );
 
                         if (!res.success) {

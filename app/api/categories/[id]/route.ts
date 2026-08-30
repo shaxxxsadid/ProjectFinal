@@ -6,10 +6,12 @@ import { AuthOptions } from '../../auth/[...nextauth]/route';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   await connectToDatabase();
-  const result = await categoryService.getById(params.id);
+  const result = await categoryService.getById(id);
 
   return NextResponse.json(
     result.success
@@ -21,14 +23,16 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   const session = await getServerSession(AuthOptions);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
   await connectToDatabase();
   const body = await request.json();
-  const result = await categoryService.update(params.id, body);
+  const result = await categoryService.update(id, body);
 
   return NextResponse.json(
     result.success
@@ -39,14 +43,16 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   const session = await getServerSession(AuthOptions);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
   await connectToDatabase();
-  const result = await categoryService.delete(params.id);
+  const result = await categoryService.delete(id);
 
   return NextResponse.json(
     result.success

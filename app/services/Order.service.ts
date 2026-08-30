@@ -18,10 +18,11 @@ import type { StockMovementType, StockMutationResult } from '@/types/stockMoveme
 import type {
   CreateOrderInput,
   FulfillmentMethod,
+  OrderItemShort,
   OrderShort,
   OrderStatus,
   StockReservationState,
-} from '@/types/order.types';
+} from '@/types/store.types';
 
 type ProductSnapshot = {
   _id: Types.ObjectId;
@@ -593,7 +594,7 @@ class OrderService {
         reservations =
           await stokeService.reserveOrderItems(
             warehouseId,
-            order.items.map((item) => ({
+            order.items.map((item: OrderItemShort) => ({
               productId: String(item.productId),
               quantity: Number(item.quantity),
               name: String(item.name),

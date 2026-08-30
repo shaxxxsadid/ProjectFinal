@@ -57,7 +57,7 @@ export default function StatsCards({
         return (
           <article
             key={card.label}
-            className="group relative overflow-hidden rounded-2xl border border-border bg-card/65 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/60"
+            className="group relative overflow-hidden rounded-2xl bg-muted/30 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/55"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -74,7 +74,7 @@ export default function StatsCards({
                 </div>
               </div>
 
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-box/20 bg-box/10 text-box">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-box/10 text-box">
                 <Icon className="text-lg" />
               </div>
             </div>

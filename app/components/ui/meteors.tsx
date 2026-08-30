@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 export interface MeteorsProps {
@@ -31,18 +31,18 @@ export function Meteors({
   color = "#64748b",
   tailColor = "#64748b",
 }: MeteorsProps) {
-  const [meteors, setMeteors] = useState<MeteorData[]>([])
+  const meteors = useMemo<MeteorData[]>(() => {
+    const pseudoRandom = (seed: number) => {
+      const value = Math.sin(seed * 12.9898) * 43758.5453
+      return value - Math.floor(value)
+    }
 
-  // Generate meteor data on client only to avoid hydration mismatch
-  useEffect(() => {
-    setMeteors(
-      Array.from({ length: count }, (_, i) => ({
-        id: i,
-        left: i * (100 / count), // Evenly distribute across width
-        delay: Math.random() * 5,
-        duration: 3 + Math.random() * 7,
-      })),
-    )
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      left: i * (100 / count),
+      delay: pseudoRandom(i + 1) * 5,
+      duration: 3 + pseudoRandom(i + count + 17) * 7,
+    }))
   }, [count])
 
   return (

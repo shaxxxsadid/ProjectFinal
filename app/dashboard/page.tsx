@@ -3,13 +3,18 @@ import { getDashboardData } from "../actions/dashboard-actions";
 import StatsCards from "../components/dashboard/StatsCrad";
 import WarehouseStockChart from "../components/dashboard/WarehouseChart";
 import StockDistributionChart from "../components/dashboard/StokeDistributionChart";
+import StockMovementStats from "../components/dashboard/StockMovementStats";
 
 const formatNumber = (value: number) =>
   new Intl.NumberFormat("ru-RU").format(value);
 
 export default async function DashboardPage() {
-  const { stats, warehouseData, distributionData } =
-    await getDashboardData();
+  const {
+    stats,
+    warehouseData,
+    distributionData,
+    movementStats,
+  } = await getDashboardData();
 
   const totalAvailable =
     distributionData.find(
@@ -49,8 +54,8 @@ export default async function DashboardPage() {
       <BackgroundPaths className="absolute inset-0 z-0 bg-background text-foreground" />
 
       <main className="relative z-10 mx-auto flex min-h-screen w-[92%] max-w-7xl items-center py-8 md:py-10">
-        <section className="w-full rounded-3xl border border-border bg-background/90 p-4 shadow-2xl backdrop-blur-2xl md:p-6 lg:p-8">
-          <header className="flex flex-col gap-5 border-b border-foreground/10 pb-6 md:flex-row md:items-end md:justify-between">
+        <section className="w-full rounded-3xl bg-background/90 p-4 shadow-2xl backdrop-blur-2xl md:p-6 lg:p-8">
+          <header className="flex flex-col gap-5 pb-3 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-box shadow-sm" />
@@ -69,7 +74,7 @@ export default async function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/55 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-2xl bg-muted/55 px-4 py-3 shadow-sm">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-box opacity-40" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-box" />
@@ -90,10 +95,11 @@ export default async function DashboardPage() {
             <StatsCards stats={stats} />
           </div>
 
-          <div className="mt-6 grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.55fr_1fr]">
-            <article className="min-w-0 rounded-3xl border border-border bg-card/65 p-4 shadow-xl md:p-5">
-              <div className="mb-2 flex flex-col gap-3 border-b border-foreground/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-7 grid grid-cols-1 items-start gap-6 xl:grid-cols-[1.55fr_1fr]">
+            <article className="min-w-0 rounded-3xl bg-muted/25 p-4 shadow-sm md:p-5">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
+                  <div className="mb-2 h-1 w-8 rounded-full bg-box/80" />
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-box/80">
                     Warehouses
                   </div>
@@ -106,7 +112,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
 
-                <span className="w-fit rounded-full border border-box/20 bg-box/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-box">
+                <span className="w-fit rounded-full bg-box/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-box">
                   {warehouseData.length} складов
                 </span>
               </div>
@@ -114,9 +120,10 @@ export default async function DashboardPage() {
               <WarehouseStockChart data={warehouseData} />
             </article>
 
-            <article className="min-w-0 rounded-3xl border border-border bg-card/65 p-4 shadow-xl md:p-5">
-              <div className="mb-1 flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <article className="min-w-0 rounded-3xl bg-muted/25 p-4 shadow-sm md:p-5">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
+                  <div className="mb-2 h-1 w-8 rounded-full bg-box/80" />
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-box/80">
                     Stock health
                   </div>
@@ -129,7 +136,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
 
-                <span className="w-fit rounded-full border border-border bg-muted/55 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground/55">
+                <span className="w-fit rounded-full bg-muted/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground/55">
                   {formatNumber(trackedStock)} ед.
                 </span>
               </div>
@@ -140,8 +147,12 @@ export default async function DashboardPage() {
             </article>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-            <article className="rounded-3xl border border-border bg-card/65 p-5 shadow-xl">
+          <StockMovementStats
+            data={movementStats}
+          />
+
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+            <article className="rounded-3xl bg-muted/25 p-5 shadow-sm">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/35">
                   Inventory status
@@ -216,7 +227,7 @@ export default async function DashboardPage() {
               </div>
             </article>
 
-            <article className="relative overflow-hidden rounded-3xl border border-box/15 bg-box/[0.055] p-5 shadow-xl">
+            <article className="relative overflow-hidden rounded-3xl bg-box/[0.055] p-5 shadow-sm">
               <div
                 aria-hidden
                 className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-box/10 blur-3xl"
@@ -239,7 +250,7 @@ export default async function DashboardPage() {
                 </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-border bg-background/65 p-3">
+                  <div className="rounded-2xl bg-background/65 p-3 shadow-sm">
                     <div className="text-[10px] uppercase tracking-wider text-foreground/35">
                       Активных складов
                     </div>
@@ -250,7 +261,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-border bg-background/65 p-3">
+                  <div className="rounded-2xl bg-background/65 p-3 shadow-sm">
                     <div className="text-[10px] uppercase tracking-wider text-foreground/35">
                       Общий остаток
                     </div>
