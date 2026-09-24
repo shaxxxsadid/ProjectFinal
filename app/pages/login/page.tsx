@@ -2,11 +2,20 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { FaGithubAlt, FaGoogle, FaYandexInternational } from "react-icons/fa6";
 import { toast } from "react-hot-toast";
 import { useDebounce } from "@/app/hooks/debounce";
 import { Meteors } from "@/app/components/ui/meteors";
+
+function getCallbackUrl() {
+    const requested = new URLSearchParams(window.location.search).get('callbackUrl');
+    if (requested?.startsWith('/') && !requested.startsWith('//') && !requested.includes('\\')) {
+        return requested;
+    }
+    return '/';
+}
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -38,20 +47,21 @@ export default function Login() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        const callbackUrl = getCallbackUrl();
 
         try {
             const result = await signIn('credentials', {
                 email,
                 password,
-                callbackUrl: '/',
+                callbackUrl,
                 redirect: false,
             });
 
-            if (result?.error) {
+            if (!result?.ok || result.error) {
                 toast.error('Неверный логин или пароль');
             } else {
                 toast.success('Успешная авторизация');
-                window.location.href = result?.url || '/';
+                window.location.href = result.url || callbackUrl;
             }
         } catch (err) {
             toast.error('Ошибка соединения');
@@ -63,7 +73,7 @@ export default function Login() {
     const handleOAuthSignIn = async (provider: 'google' | 'github' | 'yandex') => {
         setOauthLoading(provider);
         try {
-            await signIn(provider, { callbackUrl: '/' });
+            await signIn(provider, { callbackUrl: getCallbackUrl() });
         } catch (err) {
             toast.error(`Не удалось подключиться к ${provider === 'yandex' ? 'Яндексу' : provider}`);
             setOauthLoading(null);
@@ -73,32 +83,32 @@ export default function Login() {
     if (!mounted) return null;
 
     return (
-        <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-linear-to-br from-background via-muted/30 to-box/10 text-foreground">
             {/* Background */}
-            <Meteors className="bg-background text-foreground"/>
+            <Meteors className="pointer-events-none" />
 
             {/* Login Card */}
             <div className="relative z-10 w-full max-w-md px-4">
                 <div className="mb-8 text-center animate-fade-in">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                         WAREHOUSE / AUTH
                     </p>
-                    <h1 className="text-4xl font-bold text-white tracking-tight">
+                    <h1 className="text-4xl font-bold text-foreground tracking-tight">
                         Sign In
                     </h1>
                 </div>
 
-                <div className="w-full p-8 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-xl bg-slate-800/50">
+                <div className="w-full p-8 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 backdrop-blur-xl bg-linear-to-br from-box/15 to-box/5">
                     {/* Email */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Email
                         </label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl text-sm bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 disabled:opacity-50"
+                            className="w-full px-4 py-3 rounded-xl text-sm bg-background/75 text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-background focus:ring-2 focus:ring-box/50 transition-all duration-200 disabled:opacity-50"
                             placeholder="admin@warehouse.com"
                             autoComplete="email"
                             disabled={isLoading || !!oauthLoading}
@@ -107,7 +117,7 @@ export default function Login() {
 
                     {/* Password */}
                     <div className="space-y-2 mt-4">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Password
                         </label>
                         <div className="relative">
@@ -115,7 +125,7 @@ export default function Login() {
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 pr-12 py-3 rounded-xl text-sm bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 disabled:opacity-50"
+                                className="w-full px-4 pr-12 py-3 rounded-xl text-sm bg-background/75 text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-background focus:ring-2 focus:ring-box/50 transition-all duration-200 disabled:opacity-50"
                                 placeholder="••••••••"
                                 autoComplete="current-password"
                                 disabled={isLoading || !!oauthLoading}
@@ -123,7 +133,7 @@ export default function Login() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                             >
                                 {showPassword ? (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +153,7 @@ export default function Login() {
                     <button
                         disabled={isLoading || !!oauthLoading}
                         onClick={handleSubmit}
-                        className="w-full mt-6 py-3 px-4 rounded-xl font-semibold text-sm uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white border border-blue-500/50 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none relative overflow-hidden group"
+                        className="w-full mt-6 py-3 px-4 rounded-xl font-semibold text-sm uppercase tracking-wider bg-box text-white dark:text-black shadow-lg shadow-box/20 hover:opacity-90 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none relative overflow-hidden group"
                     >
                         <span className={`flex items-center justify-center gap-2 transition-opacity duration-200 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
                             Sign In
@@ -160,15 +170,10 @@ export default function Login() {
                     </button>
 
                     {/* Divider */}
-                    <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-600/50" />
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-3 bg-slate-800/80 rounded-lg text-slate-400">
-                                or continue with
-                            </span>
-                        </div>
+                    <div className="my-6 flex items-center gap-3 text-muted-foreground">
+                        <span className="h-px flex-1 bg-foreground/15" />
+                        <span className="text-sm">or continue with</span>
+                        <span className="h-px flex-1 bg-foreground/15" />
                     </div>
 
                     {/* Social Buttons */}
@@ -176,7 +181,7 @@ export default function Login() {
                         <button
                             onClick={() => handleOAuthSignIn('google')}
                             disabled={isLoading || !!oauthLoading}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-600/50 bg-slate-700/30 text-slate-300 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-muted/70 text-foreground hover:bg-box/15 hover:text-box transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                         >
                             {oauthLoading === 'google' ? (
                                 <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -191,7 +196,7 @@ export default function Login() {
                         <button
                             onClick={() => handleOAuthSignIn('github')}
                             disabled={isLoading || !!oauthLoading}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-600/50 bg-slate-700/30 text-slate-300 hover:bg-slate-600/50 hover:border-slate-500 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-muted/70 text-foreground hover:bg-box/15 hover:text-box transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                         >
                             {oauthLoading === 'github' ? (
                                 <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -206,7 +211,7 @@ export default function Login() {
                         <button
                             onClick={() => handleOAuthSignIn('yandex')}
                             disabled={isLoading || !!oauthLoading}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-600/50 bg-slate-700/30 text-slate-300 hover:bg-red-600/10 hover:border-red-600/50 hover:text-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-muted/70 text-foreground hover:bg-box/15 hover:text-box transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                         >
                             {oauthLoading === 'yandex' ? (
                                 <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -220,9 +225,16 @@ export default function Login() {
                     </div>
                 </div>
 
-                <p className="text-center text-xs text-slate-500 mt-6">
+                <p className="mt-6 text-center text-sm text-muted-foreground">
+                    Нет аккаунта?{' '}
+                    <Link href="/pages/register" className="font-medium text-box hover:underline">
+                        Зарегистрироваться
+                    </Link>
+                </p>
+
+                <p className="text-center text-xs text-muted-foreground mt-6">
                     By signing in, you agree to our{' '}
-                    <a href="/terms" className="text-blue-400 hover:text-blue-300 hover:underline transition-colors">
+                    <a href="/terms" className="text-box hover:underline transition-colors">
                         Terms of Service
                     </a>
                 </p>

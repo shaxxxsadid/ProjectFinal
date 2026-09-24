@@ -253,7 +253,7 @@ function TooManyRequestsContent() {
               delay: 0.6,
               duration: 0.4,
             }}
-            className="mt-8 h-px bg-linear-to-r from-transparent via-border/50 to-transparent"
+            className="mt-8 h-px bg-linear-to-r from-transparent via-border/50 to-transparent" 
           />
 
           {process.env.NODE_ENV ===

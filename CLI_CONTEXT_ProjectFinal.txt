@@ -1,0 +1,282 @@
+КОНТЕКСТ ДЛЯ CLI / CODEX — ProjectFinal
+
+Проект: дипломный проект на Next.js/TypeScript/MongoDB.
+Текущая тема диплома:
+«Разработка информационной системы для автоматизации учёта и реализации строительных материалов».
+
+ВАЖНЫЙ РЕЖИМ РАБОТЫ
+1. Сначала анализируй текущий код и предлагай точечные изменения.
+2. Не переписывай большие участки без необходимости.
+3. Не ломай уже работающую бизнес-логику.
+4. Для неоднозначных файлов всегда указывай назначение:
+   - page.tsx — Catalog
+   - page.tsx — Admin Dashboard
+   - route.ts — Stock API
+5. Не меняй старые рабочие части проекта, если задача их не касается.
+6. После изменений проверяй:
+   npx tsc --noEmit
+   npx eslint .
+   npm run build
+7. Используй текущую структуру проекта как источник истины, а не придумывай новые типы/пути без проверки.
+8. UI должен использовать semantic theme classes из globals.css:
+   bg-background
+   text-foreground
+   border-border
+   bg-muted
+   text-muted-foreground
+   bg-card
+   bg-box
+   text-box
+   border-box
+
+СТЕК
+- Next.js 16.2.4
+- React 19.2.3
+- TypeScript 5
+- MongoDB / Mongoose 9.4.1
+- NextAuth 4.24.13
+- Zustand 5
+- TailwindCSS 4
+- framer-motion / motion
+- bcryptjs
+
+ТЕКУЩИЙ СТАТУС ПРОЕКТА
+Уже реализовано и работает:
+- OAuth авторизация: Google / GitHub / Yandex.
+- Credentials LOGIN уже реализован в NextAuth.
+- JWT sessions.
+- роли user/admin.
+- каталог товаров.
+- категории и подкатегории.
+- фильтрация каталога по пути категорий.
+- корзина.
+- checkout.
+- «Мои заказы».
+- административное управление заказами.
+- склады.
+- складские партии.
+- остатки quantity / reserved / available.
+- FEFO для партий со сроком годности.
+- резервирование товара при подтверждении заказа.
+- возврат резерва при отмене.
+- окончательное списание при выдаче / передаче в транспортировку.
+- выбор только тех складов, которые полностью обеспечивают заказ.
+- StockMovement:
+  reservation
+  release
+  issue
+  receipt
+  adjustment
+- Dashboard со складской аналитикой.
+- light/dark theme.
+- proxy/middleware защита и rate limit.
+- критические stock/warehouse API дополнительно защищены requireAdmin().
+- TypeScript: 0 errors.
+- Production build: success.
+- ESLint: 0 errors, остаются только warnings.
+
+БИЗНЕС-ЛОГИКА ЗАКАЗОВ
+FulfillmentMethod:
+- pickup
+- transport_company
+
+Самовывоз:
+new
+→ confirmed
+→ assembling
+→ ready_for_pickup
+→ issued
+
+Транспортировка:
+new
+→ confirmed
+→ assembling
+→ ready_for_shipment
+→ handed_to_carrier
+
+В UI handed_to_carrier показывать как:
+«Передан в транспортировку».
+
+После статуса «Передан в транспортировку» доставка находится вне системы.
+НЕ добавлять:
+- tracking
+- адрес доставки
+- управление транспортными компаниями
+- статусы доставки после передачи
+
+СКЛАД
+Резерв:
+available -= qty
+reserved += qty
+quantity не меняется
+
+Отмена:
+reserved -= qty
+available += qty
+
+Финальное списание:
+quantity -= qty
+reserved -= qty
+available не меняется
+
+Инвариант:
+available = quantity - reserved
+
+FEFO:
+- сначала партия с ближайшим сроком годности
+- просроченные партии не использовать
+
+StockMovement хранит:
+- type
+- source
+- stockId
+- productId
+- warehouseId
+- batchNumber
+- quantity
+- before
+- after
+- orderId / orderNumber при наличии
+- actorId
+- timestamps
+
+НОВАЯ ПРЕДМЕТНАЯ ОБЛАСТЬ
+Проект нужно адаптировать под строительные материалы.
+
+Не переписывать ядро.
+Нужно переиспользовать:
+- товары
+- категории
+- склады
+- партии
+- остатки
+- заказы
+- резервирование
+- StockMovement
+- Dashboard
+
+ПЛАН ПО НОВОЙ ТЕМЕ
+1. Credential-регистрация.
+2. Stock Movement вынести в отдельную страницу.
+3. Функционал для строительных материалов:
+   - единицы измерения
+   - свойства материалов через category attributes
+   - минимальный складской остаток
+   - возможно поставщики позже
+4. Полностью переработать главную страницу.
+
+ТЕКУЩАЯ ЗАДАЧА — CREDENTIAL REGISTRATION
+
+Важно:
+Credentials ВХОД уже есть в:
+app/api/auth/[...nextauth]/route.ts
+
+Он:
+- принимает email/password
+- ищет Users по email
+- проверяет user.passwordHash
+- bcrypt.compare(password, passwordHash)
+- получает роль через Roles.service
+- возвращает MongoDB user id
+- OAuth не менять
+
+Нужно добавить именно регистрацию.
+
+Желаемый поток:
+app/pages/register/page.tsx
+→ POST /api/auth/register
+→ validation
+→ bcrypt.hash(password, 12)
+→ default role = "user"
+→ Users.create(...)
+→ создать credential Account, если это соответствует текущей схеме Accounts/Providers
+→ signIn("credentials")
+→ redirect в /pages/catalog
+
+Поля формы:
+- Имя
+- Фамилия
+- Email
+- Пароль
+- Повтор пароля
+
+Минимальная валидация:
+- firstName не пустой
+- lastName не пустой
+- корректный email
+- password >= 8 символов
+- password === confirmPassword
+- email привести к lowercase/trim
+- нельзя создать второй User с тем же email
+
+ВАЖНЫЙ СЛУЧАЙ
+Если User с таким email уже существует, в том числе создан OAuth:
+- НЕ создавать второго пользователя.
+- вернуть понятное сообщение:
+  «Пользователь с таким email уже существует. Войдите существующим способом авторизации.»
+
+Новый пользователь:
+- role = user
+- isActive = true
+- username можно сделать из firstName + lastName либо по текущей логике проекта
+- password хранить только как passwordHash
+- plain password никогда не писать в БД и логи
+
+LOGIN PAGE
+После реализации регистрации:
+- OAuth кнопки оставить как есть
+- credentials login оставить как есть
+- добавить ссылку:
+  «Нет аккаунта? Зарегистрироваться»
+  → /pages/register
+
+АРХИТЕКТУРА АВТОРИЗАЦИИ
+OAuth:
+- при первом входе пользователь создаётся автоматически
+- Accounts связывает OAuth provider с User
+
+Credentials:
+- login уже работает
+- нужна только регистрация
+
+Не переделывать NextAuth, если это не требуется.
+
+ПЕРЕД ИЗМЕНЕНИЯМИ ПРОЧИТАТЬ АКТУАЛЬНЫЕ ФАЙЛЫ
+Обязательно посмотреть:
+- app/pages/login/page.tsx
+- app/models/Users.ts
+- app/models/Accounts.ts
+- app/models/Providers.ts
+- app/api/auth/[...nextauth]/route.ts
+- app/services/Roles.service.ts
+- при наличии app/api/users/route.ts
+- при наличии User.service.ts
+
+Если структура Accounts/Providers отличается от ожиданий:
+сначала объяснить, как правильно встроить credential registration в текущую модель, и только потом менять.
+
+ДАЛЬШЕ ПО ПЛАНУ ПОСЛЕ REGISTRATION
+1. Вынести Stock Movement из admin tabs в отдельную страницу.
+2. Dashboard оставить аналитическим.
+3. В Stock Movement page:
+   - поиск
+   - фильтр по типу операции
+   - фильтр по складу
+   - период
+   - таблица
+   - детали выбранного movement
+4. Затем адаптация Product под строительные материалы:
+   - unit
+   - minStockLevel
+   - category attributes
+5. Затем переработка главной страницы.
+
+НЕ ДОБАВЛЯТЬ БЕЗ ОТДЕЛЬНОГО СОГЛАСОВАНИЯ
+- сложную систему поставщиков прямо сейчас
+- delivery tracking
+- транспортные компании
+- WebSocket
+- микросервисы
+- сложный permission engine
+- лишний AuditLog поверх StockMovement
+- перемещения между складами

@@ -63,8 +63,8 @@ export async function GET() {
             .map((acc) => {
                 const provider = acc.providerId;
 
-                if (!isPopulatedProvider(provider)) {
-                    console.warn(
+                if (!isPopulatedProvider(provider)) { 
+                    console.warn( 
                         '[Accounts API] Invalid provider reference:',
                         acc.providerId
                     );
