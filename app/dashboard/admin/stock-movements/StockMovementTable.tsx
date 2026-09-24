@@ -43,6 +43,12 @@ const movementClass = (
     case 'issue':
       return 'border-foreground/15 bg-foreground/10 text-foreground/75';
 
+    case 'receipt':
+      return 'border-box/20 bg-box/10 text-box';
+
+    case 'adjustment':
+      return 'border-border bg-muted text-foreground/70';
+
     default:
       return 'border-border bg-muted text-muted-foreground';
   }

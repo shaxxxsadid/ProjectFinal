@@ -57,7 +57,7 @@ export default function StockDistributionChart({
                 : 'color-mix(in oklab, var(--foreground) 10%, transparent)',
           }}
         >
-          <div className="absolute inset-[22%] flex items-center justify-center rounded-full border border-border bg-card">
+          <div className="absolute inset-[22%] flex items-center justify-center rounded-full bg-background shadow-sm">
             <div className="text-center">
               <div className="text-xl font-bold text-foreground">
                 {formatNumber(total)}
@@ -71,8 +71,8 @@ export default function StockDistributionChart({
         </div>
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-border bg-muted/40 px-3 py-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-muted/35 px-3 py-2">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="h-2.5 w-2.5 rounded-sm bg-box" />
             Свободно
@@ -89,7 +89,7 @@ export default function StockDistributionChart({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-muted/40 px-3 py-2">
+        <div className="rounded-xl bg-muted/35 px-3 py-2">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="h-2.5 w-2.5 rounded-sm bg-foreground/30" />
             В резерве

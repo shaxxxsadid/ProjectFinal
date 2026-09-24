@@ -3,12 +3,24 @@
 import { DashboardService } from "../services/Dashboard.service";
 
 export async function getDashboardData() {
-  // Здесь мы вызываем сервис
-  const stats = await DashboardService.getStats();
-  const warehouseData = await DashboardService.getWarehouseStockData();
-  const distributionData = await DashboardService.getStockDistribution();
+  const [
+    stats,
+    warehouseData,
+    distributionData,
+    movementStats,
+  ] = await Promise.all([
+    DashboardService.getStats(),
+    DashboardService.getWarehouseStockData(),
+    DashboardService.getStockDistribution(),
+    DashboardService.getStockMovementStats(30),
+  ]);
 
-  return { stats, warehouseData, distributionData };
+  return {
+    stats,
+    warehouseData,
+    distributionData,
+    movementStats,
+  };
 }
 
 export async function createNewsAction(formData: FormData) {

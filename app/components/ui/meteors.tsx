@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 export interface MeteorsProps {
@@ -28,25 +28,25 @@ export function Meteors({
   children,
   count = 20,
   angle = 215,
-  color = "#64748b",
-  tailColor = "#64748b",
+  color = "var(--box)",
+  tailColor = "var(--box)",
 }: MeteorsProps) {
-  const [meteors, setMeteors] = useState<MeteorData[]>([])
+  const meteors = useMemo<MeteorData[]>(() => {
+    const pseudoRandom = (seed: number) => {
+      const value = Math.sin(seed * 12.9898) * 43758.5453
+      return value - Math.floor(value)
+    }
 
-  // Generate meteor data on client only to avoid hydration mismatch
-  useEffect(() => {
-    setMeteors(
-      Array.from({ length: count }, (_, i) => ({
-        id: i,
-        left: i * (100 / count), // Evenly distribute across width
-        delay: Math.random() * 5,
-        duration: 3 + Math.random() * 7,
-      })),
-    )
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      left: i * (100 / count),
+      delay: pseudoRandom(i + 1) * 5,
+      duration: 3 + pseudoRandom(i + count + 17) * 7,
+    }))
   }, [count])
 
   return (
-    <div className={cn("fixed inset-0 overflow-hidden bg-neutral-950", className)}>
+    <div className={cn("fixed inset-0 overflow-hidden", className)}>
       {/* Keyframe animation - uses vmax for viewport scaling */}
       <style>{`
         @keyframes meteor-fall {
@@ -69,8 +69,8 @@ export function Meteors({
         className="pointer-events-none absolute inset-0"
         style={{
           background: `
-            radial-gradient(ellipse at 50% 0%, rgba(30, 40, 60, 0.3) 0%, transparent 50%),
-            radial-gradient(ellipse at 100% 100%, rgba(20, 20, 40, 0.2) 0%, transparent 50%)
+            radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--box) 12%, transparent) 0%, transparent 50%),
+            radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--box) 8%, transparent) 0%, transparent 50%)
           `,
         }}
       />
@@ -84,7 +84,7 @@ export function Meteors({
             top: "-40px",
             left: `${meteor.left}%`,
             backgroundColor: color,
-            boxShadow: "0 0 0 1px rgba(255,255,255,0.1)",
+            boxShadow: "0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent)",
             animation: `meteor-fall ${meteor.duration}s linear infinite`,
             animationDelay: `${meteor.delay}s`,
           }}
@@ -107,7 +107,7 @@ export function Meteors({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(10,10,15,0.8) 100%)",
+            "radial-gradient(ellipse at center, transparent 0%, transparent 58%, color-mix(in srgb, var(--background) 65%, transparent) 100%)",
         }}
       />
 

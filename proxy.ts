@@ -328,7 +328,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         }
 
         const loginUrl = new URL('/pages/login', request.url);
-        loginUrl.searchParams.set('callbackUrl', path);
+        loginUrl.searchParams.set('callbackUrl', path + request.nextUrl.search);
 
         return NextResponse.redirect(loginUrl);
     }

@@ -16,14 +16,13 @@ import { useStokeStore } from "@/app/store/stokeStore";
 import { useWarehouseStore } from "@/app/store/warehouseStore";
 import { useCategoryStore } from "@/app/store/categoryStore";
 import { useOrderStore } from "@/app/store/orderStore";
-
+import { useStockMovementStore } from "@/app/store/stockMovementStore";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/app/hooks/debounce";
 import { AnimatePresence, motion } from "framer-motion";
 import { BusinessProfileShort, ProductShort, ProviderShort, RoleShort, StokeShort, UserShort, WarehouseShort } from "@/types/store.types";
 import { toast } from "react-hot-toast";
 import { FaLayerGroup } from "react-icons/fa6";
-import { useStockMovementStore } from "@/app/store/stockMovementStore";
 
 
 const UserTable = lazy(() => import("./user/UserTable").then(m => ({ default: m.UserTable })));
@@ -104,7 +103,7 @@ export default function AdminDashboard() {
   const { warehouses, fetchWarehouses, createWarehouse } = useWarehouseStore();
   const { categories, fetchCategories, createCategory } = useCategoryStore();
   const { orders, hasLoaded: ordersLoaded, fetchOrders } = useOrderStore();
-  const { movements, hasLoaded: movementsLoaded, fetchMovements } = useStockMovementStore();
+  const { fetchMovements } = useStockMovementStore();
   const [activeTab, setActiveTab] = useState('tab1');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -167,8 +166,10 @@ export default function AdminDashboard() {
       void fetchOrders();
     }
 
-    // Историю склада тоже загружаем только при первом открытии.
-    if (tab === 'tab11' && !movementsLoaded && movements.length === 0) {
+    // Историю склада всегда перечитываем при открытии вкладки.
+    // Так новые reservation/release/issue/receipt/adjustment
+    // сразу появляются после операций со складом или заказами.
+    if (tab === 'tab11') {
       void fetchMovements();
     }
   }, [
@@ -178,8 +179,6 @@ export default function AdminDashboard() {
     ordersLoaded,
     orders.length,
     fetchOrders,
-    movementsLoaded,
-    movements.length,
     fetchMovements,
   ]);
 
@@ -374,10 +373,7 @@ export default function AdminDashboard() {
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
             onSubmit={async (data) => {
-              const parent =
-                typeof data.parent === 'string'
-                  ? data.parent
-                  : data.parent?._id ?? null;
+              const parent = data.parent ?? null;
 
               const res = await createCategory({
                 code: data.code,

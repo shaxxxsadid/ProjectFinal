@@ -603,11 +603,15 @@ class CategoryService {
             visited.add(currentId);
             result.push(currentId);
 
-            const children = await Category.find({ parent: new Types.ObjectId(currentId) })
+            const children = await Category.find(
+                { parent: currentId } as any // eslint-disable-line
+            )
                 .select('_id')
-                .lean() as Array<{ _id: Types.ObjectId }>;
+                .lean();
 
-            children.forEach((child) => queue.push(String(child._id)));
+            children.forEach((child) => {
+                queue.push(String(child._id));
+            });
         }
 
         return result;

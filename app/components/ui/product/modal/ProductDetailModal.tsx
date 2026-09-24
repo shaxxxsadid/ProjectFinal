@@ -19,7 +19,6 @@ export const ProductDetailModal = ({
     avatarVersion,
     compact = false
 }: ProductDetailModalProps) => {
-    console.log('Price', product?.price);
     useEffect(() => {
         const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         if (product) window.addEventListener('keydown', handler);
@@ -122,10 +121,10 @@ export const ProductDetailModal = ({
                                 />
 
                                 {/* Категория */}
-                                {product.categoryId && (
+                                {product.categoryId.length > 0 && (
                                     <SpecRow
                                         label="Категория"
-                                        value={product.categoryId}
+                                        value={product.categoryId.join(' → ')}
                                         compact={compact}
                                     />
                                 )}

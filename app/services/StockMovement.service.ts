@@ -19,6 +19,15 @@ interface RecordOrderMovementsInput {
   mutations: StockMutationResult[];
 }
 
+interface RecordManualMovementInput {
+  type: Extract<
+    StockMovementType,
+    'receipt' | 'adjustment'
+  >;
+  actorId: string;
+  mutation: StockMutationResult;
+}
+
 class StockMovementService {
   /**
    * Записывает только УСПЕШНУЮ бизнес-операцию заказа.
@@ -141,6 +150,119 @@ class StockMovementService {
     } catch (error) {
       logger.error(
         `Failed to write StockMovement: ${
+          error instanceof Error
+            ? error.message
+            : error
+        }`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Записывает ручное изменение склада:
+   * - receipt — создание новой партии / поступление;
+   * - adjustment — ручное изменение или удаление партии.
+   *
+   * Метаданные без изменения quantity/reserved/available
+   * в историю движения товара не записываются.
+   */
+  async recordManualMovement(
+    input: RecordManualMovementInput
+  ): Promise<boolean> {
+    const mutation = input.mutation;
+
+    if (
+      !mutation ||
+      !Types.ObjectId.isValid(input.actorId) ||
+      !Types.ObjectId.isValid(mutation.stockId) ||
+      !Types.ObjectId.isValid(mutation.productId) ||
+      !Types.ObjectId.isValid(mutation.warehouseId)
+    ) {
+      throw new Error(
+        'Invalid manual stock movement references'
+      );
+    }
+
+    const affectedQuantity = Math.max(
+      Math.abs(
+        Number(mutation.after.quantity) -
+          Number(mutation.before.quantity)
+      ),
+      Math.abs(
+        Number(mutation.after.reserved) -
+          Number(mutation.before.reserved)
+      ),
+      Math.abs(
+        Number(mutation.after.available) -
+          Number(mutation.before.available)
+      )
+    );
+
+    if (
+      !Number.isFinite(affectedQuantity) ||
+      affectedQuantity <= 0
+    ) {
+      return false;
+    }
+
+    try {
+      await StockMovements.create({
+        type: input.type,
+        source: 'manual',
+
+        stockId: new Types.ObjectId(
+          mutation.stockId
+        ),
+        productId: new Types.ObjectId(
+          mutation.productId
+        ),
+        warehouseId: new Types.ObjectId(
+          mutation.warehouseId
+        ),
+
+        batchNumber: String(
+          mutation.batchNumber ?? ''
+        ),
+
+        quantity: affectedQuantity,
+
+        before: {
+          quantity: Number(
+            mutation.before.quantity
+          ),
+          reserved: Number(
+            mutation.before.reserved
+          ),
+          available: Number(
+            mutation.before.available
+          ),
+        },
+
+        after: {
+          quantity: Number(
+            mutation.after.quantity
+          ),
+          reserved: Number(
+            mutation.after.reserved
+          ),
+          available: Number(
+            mutation.after.available
+          ),
+        },
+
+        orderId: null,
+        orderNumber: null,
+
+        actorId: new Types.ObjectId(
+          input.actorId
+        ),
+      });
+
+      return true;
+    } catch (error) {
+      logger.error(
+        `Failed to write manual StockMovement: ${
           error instanceof Error
             ? error.message
             : error

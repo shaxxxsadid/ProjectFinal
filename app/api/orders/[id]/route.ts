@@ -7,7 +7,7 @@ import {
   orderService,
   OrderServiceError,
 } from '@/app/services/Order.service';
-import type { OrderStatus } from '@/types/order.types';
+import type { OrderStatus } from '@/types/store.types';
 
 type SessionUser = {
   id?: string;

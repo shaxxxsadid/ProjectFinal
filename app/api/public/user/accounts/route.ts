@@ -1,5 +1,5 @@
 // app/api/public/user/accounts/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { AuthOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/app/lib/mongoose';
@@ -15,7 +15,28 @@ interface AccountResponse {
     };
 }
 
-export async function GET(req: NextRequest) {
+interface AccountLean {
+    type?: unknown;
+    providerId?: unknown;
+}
+
+interface PopulatedProvider {
+    _id: unknown;
+    publicId?: unknown;
+    name?: unknown;
+}
+
+function isPopulatedProvider(
+    value: unknown
+): value is PopulatedProvider {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        '_id' in value
+    );
+}
+
+export async function GET() {
     try {
         const session = await getServerSession(AuthOptions);
 
@@ -35,32 +56,44 @@ export async function GET(req: NextRequest) {
         const accounts = await Accounts.find({ userId: user._id })
             .populate('providerId', 'publicId name')
             .select('type providerId providerAccountId')
-            .lean();
+            .lean() as unknown as AccountLean[];
 
         // 🔁 3. Преобразуем в формат для фронтенда
         const result: AccountResponse[] = accounts
-            .map((acc: any) => {
+            .map((acc) => {
                 const provider = acc.providerId;
 
-                if (!provider || typeof provider !== 'object' || !provider._id) {
-                    console.warn('[Accounts API] Invalid provider reference:', acc.providerId);
+                if (!isPopulatedProvider(provider)) { 
+                    console.warn( 
+                        '[Accounts API] Invalid provider reference:',
+                        acc.providerId
+                    );
                     return null;
                 }
 
-                // ✅ Берём publicId (как в твоей схеме), фолбэк на name
-                const rawName = (provider.publicId || provider.name || '').toString().toLowerCase();
+                const rawName = String(
+                    provider.publicId ?? provider.name ?? ''
+                )
+                    .toLowerCase()
+                    .trim();
 
-                // ✅ Нормализуем в ожидаемый тип
                 const providerName: AccountResponse['provider']['name'] =
-                    rawName === 'google' || rawName === 'github' || rawName === 'yandex' || rawName === 'credentials'
+                    rawName === 'google' ||
+                    rawName === 'github' ||
+                    rawName === 'yandex' ||
+                    rawName === 'credentials'
                         ? rawName
                         : 'credentials';
 
+                const accountType: AccountResponse['type'] =
+                    acc.type === 'oauth'
+                        ? 'oauth'
+                        : 'credential';
 
                 return {
-                    type: acc.type as 'oauth' | 'credential',
+                    type: accountType,
                     provider: {
-                        _id: provider._id.toString(),
+                        _id: String(provider._id),
                         name: providerName,
                     },
                 };

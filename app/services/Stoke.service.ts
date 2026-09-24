@@ -49,6 +49,19 @@ class StokeService {
         }
     }
 
+    async getStokeById(_id: string) {
+        try {
+            if (!_id || !Types.ObjectId.isValid(_id)) {
+                return null;
+            }
+
+            return await Stoke.findById(_id);
+        } catch (error) {
+            logger.error(error as Error);
+            throw error;
+        }
+    }
+
     async getStokeByProductId(productId: string) {
         try {
             return await Stoke.findOne({ productId });
